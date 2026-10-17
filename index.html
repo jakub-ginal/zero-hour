@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zero Hour - Upcoming Rocket Launches</title>
+</head>
+<body>
+  <h1>Zero Hour</h1>
+  <p>Upcoming rocket launches.</p>
+
+  <ul id="launches"></ul>
+  <p id="status">Loading launches...</p>
+
+  <script type="module">
+    const API = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=20&mode=normal";
+
+    const list = document.querySelector("#launches");
+    const status = document.querySelector("#status");
+
+    async function loadLaunches() {
+      try {
+        const response = await fetch(API);
+        const data = await response.json();
+
+        for (const launch of data.results) {
+          const item = document.createElement("li");
+          item.textContent = launch.name + " - " + new Date(launch.net).toLocaleString();
+          list.append(item);
+        }
+
+        status.textContent = data.results.length + " launches";
+      } catch (error) {
+        status.textContent = "Could not load launches. Try again later.";
+        console.error(error);
+      }
+    }
+
+    loadLaunches();
+  </script>
+</body>
+</html>
