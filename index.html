@@ -25,7 +25,7 @@
           throw new Error("Request failed with status " + response.status);
         }
         const data = await response.json();
-        const launches = data.results || [];
+        const launches = (data.results || []).sort((a, b) => new Date(a.net) - new Date(b.net));
 
         for (const launch of launches) {
           const item = document.createElement("li");
