@@ -21,15 +21,19 @@
     async function loadLaunches() {
       try {
         const response = await fetch(API);
+        if (!response.ok) {
+          throw new Error("Request failed with status " + response.status);
+        }
         const data = await response.json();
+        const launches = data.results || [];
 
-        for (const launch of data.results) {
+        for (const launch of launches) {
           const item = document.createElement("li");
           item.textContent = launch.name + " - " + new Date(launch.net).toLocaleString();
           list.append(item);
         }
 
-        status.textContent = data.results.length + " launches";
+        status.textContent = launches.length + " launches";
       } catch (error) {
         status.textContent = "Could not load launches. Try again later.";
         console.error(error);
