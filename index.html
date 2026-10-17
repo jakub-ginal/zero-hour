@@ -4,13 +4,26 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Zero Hour - Upcoming Rocket Launches</title>
+  <meta name="description" content="Upcoming orbital rocket launches worldwide.">
+  <meta name="theme-color" content="#05060b">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>Zero Hour</h1>
-  <p>Upcoming rocket launches.</p>
+  <header class="header">
+    <div class="brand">
+      <h1>Zero Hour</h1>
+      <p>Upcoming orbital rocket launches.</p>
+    </div>
+    <p id="status" class="status">Loading launches...</p>
+  </header>
 
-  <ul id="launches"></ul>
-  <p id="status">Loading launches...</p>
+  <main>
+    <div id="launches" class="grid"></div>
+  </main>
+
+  <footer class="footer">
+    <p>Launch data by <a href="https://thespacedevs.com" target="_blank" rel="noopener">The Space Devs</a> - Launch Library 2</p>
+  </footer>
 
   <script type="module" src="app.js"></script>
 </body>
