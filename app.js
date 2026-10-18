@@ -42,6 +42,13 @@ function countdownParts(ms) {
   };
 }
 
+function shortCountdown(ms) {
+  const cd = countdownParts(ms);
+  const sign = cd.past ? "T+" : "T-";
+  if (cd.d > 0) return `${sign} ${cd.d}d ${pad(cd.h)}h ${pad(cd.m)}m`;
+  return `${sign} ${pad(cd.h)}:${pad(cd.m)}:${pad(cd.s)}`;
+}
+
 function missionName(launch) {
   const parts = launch.name.split(" | ");
   return parts.length > 1 ? parts.slice(1).join(" | ") : launch.name;
@@ -78,15 +85,22 @@ function renderHero() {
 }
 
 function tick() {
-  if (!nextLaunch) return;
-  const box = document.querySelector("#hero-countdown");
-  if (!box) return;
-  const cd = countdownParts(new Date(nextLaunch.net) - Date.now());
-  box.querySelector('[data-unit="d"]').textContent = String(cd.d);
-  box.querySelector('[data-unit="h"]').textContent = pad(cd.h);
-  box.querySelector('[data-unit="m"]').textContent = pad(cd.m);
-  box.querySelector('[data-unit="s"]').textContent = pad(cd.s);
-  box.classList.toggle("is-past", cd.past);
+  const now = Date.now();
+
+  const box = nextLaunch && document.querySelector("#hero-countdown");
+  if (box) {
+    const cd = countdownParts(new Date(nextLaunch.net) - now);
+    box.querySelector('[data-unit="d"]').textContent = String(cd.d);
+    box.querySelector('[data-unit="h"]').textContent = pad(cd.h);
+    box.querySelector('[data-unit="m"]').textContent = pad(cd.m);
+    box.querySelector('[data-unit="s"]').textContent = pad(cd.s);
+    box.classList.toggle("is-past", cd.past);
+  }
+
+  for (const el of document.querySelectorAll("[data-countdown]")) {
+    const launch = launches.find((l) => l.id === el.dataset.countdown);
+    if (launch) el.textContent = shortCountdown(new Date(launch.net) - now);
+  }
 }
 
 function card(launch) {
@@ -106,8 +120,11 @@ function card(launch) {
         <h2 class="card__title">${missionName(launch)}</h2>
         ${rocketName(launch) ? `<span class="card__rocket">${rocketName(launch)}</span>` : ""}
         <div class="card__foot">
-          <span class="card__time">${formatDate(launch.net)}</span>
-          <span class="card__pad">${pad || ""}</span>
+          <div class="card__where">
+            <span class="card__time">${formatDate(launch.net)}</span>
+            <span class="card__pad">${pad || ""}</span>
+          </div>
+          <span class="card__countdown" data-countdown="${launch.id}"></span>
         </div>
       </div>
     </article>`;

@@ -148,6 +148,7 @@ main {
 }
 .card__foot {
   display: flex;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
   margin-top: 12px;
@@ -156,8 +157,26 @@ main {
   font-size: 12px;
   color: var(--text-3);
 }
+.card__where {
+  min-width: 0;
+}
 .card__time {
+  display: block;
   color: var(--accent-2);
+}
+.card__pad {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card__countdown {
+  flex-shrink: 0;
+  text-align: right;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-2);
+  white-space: nowrap;
 }
 
 .hero {
