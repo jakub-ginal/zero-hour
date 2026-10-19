@@ -10,6 +10,9 @@ const search = document.querySelector("#search");
 const statusChips = document.querySelector("#status-chips");
 const providerSelect = document.querySelector("#provider");
 const noResults = document.querySelector("#no-results");
+const detail = document.querySelector("#detail");
+const detailBody = document.querySelector("#detail-body");
+const detailMedia = document.querySelector("#detail-media");
 
 let launches = [];
 let nextLaunch = null;
@@ -75,6 +78,15 @@ function padName(launch) {
   return launch.pad && (launch.pad.name || (launch.pad.location && launch.pad.location.name));
 }
 
+function firstUrl(items) {
+  if (Array.isArray(items)) {
+    for (const item of items) {
+      if (item && item.url) return item.url;
+    }
+  }
+  return null;
+}
+
 function pickNextLaunch() {
   const now = Date.now();
   nextLaunch = launches.find((l) => new Date(l.net) > now - 10 * 60 * 1000) || launches[0] || null;
@@ -113,6 +125,12 @@ function tick() {
   for (const el of document.querySelectorAll("[data-countdown]")) {
     const launch = launches.find((l) => l.id === el.dataset.countdown);
     if (launch) el.textContent = shortCountdown(new Date(launch.net) - now);
+  }
+
+  if (detail.open && detail.dataset.id) {
+    const launch = launches.find((l) => l.id === detail.dataset.id);
+    const el = document.querySelector("#detail-count");
+    if (launch && el) el.textContent = shortCountdown(new Date(launch.net) - now);
   }
 }
 
@@ -154,7 +172,7 @@ function card(launch) {
   const statusName = (launch.status && launch.status.name) || "To Be Determined";
 
   return `
-    <article class="card">
+    <button type="button" class="card" data-id="${launch.id}">
       <div class="card__media">
         ${image ? `<img src="${image}" alt="" loading="lazy">` : ""}
         <span class="pill pill--${statusClass(abbrev)}" title="${statusName}">${abbrev}</span>
@@ -171,7 +189,7 @@ function card(launch) {
           <span class="card__countdown" data-countdown="${launch.id}"></span>
         </div>
       </div>
-    </article>`;
+    </button>`;
 }
 
 function renderLaunches() {
@@ -199,6 +217,116 @@ function renderProviders() {
       .map(([name, count]) => `<option value="${name}">${name} (${count})</option>`)
       .join("");
   providerSelect.value = filters.provider;
+}
+
+function mapEmbed(lat, lon) {
+  const d = 0.06;
+  const bbox = [lon - d * 2, lat - d, lon + d * 2, lat + d].join(",");
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lon}`;
+}
+
+function windowText(launch) {
+  if (!launch.window_start || !launch.window_end) return "Not published";
+  return `${formatDate(launch.window_start)} - ${formatDate(launch.window_end)}`;
+}
+
+function openDetail(id) {
+  const launch = launches.find((l) => l.id === id);
+  if (!launch) return;
+
+  const image = launch.image && (launch.image.image_url || launch.image.thumbnail_url);
+  detailMedia.innerHTML = image ? `<img src="${image}" alt="">` : "";
+
+  const abbrev = statusAbbrev(launch);
+  const facts = [
+    ["Liftoff", formatDate(launch.net)],
+    ["Window", windowText(launch)],
+    ["Rocket", rocketName(launch) || "Unknown"],
+    ["Provider", providerName(launch) || "Unknown"],
+    ["Mission type", (launch.mission && launch.mission.type) || "Unknown"],
+    ["Orbit", (launch.mission && launch.mission.orbit && launch.mission.orbit.name) || "Unknown"],
+    ["Pad", (launch.pad && launch.pad.name) || "Unknown"],
+    ["Location", (launch.pad && launch.pad.location && launch.pad.location.name) || "Unknown"],
+  ];
+
+  const hasCoords = launch.pad && launch.pad.latitude != null && launch.pad.longitude != null;
+  const video = firstUrl(launch.vid_urls);
+  const info = firstUrl(launch.info_urls);
+
+  detailBody.innerHTML = `
+    <div class="detail__pills">
+      <span class="pill pill--${statusClass(abbrev)}">${abbrev}</span>
+      <span class="pill pill--muted">${(launch.status && launch.status.name) || "To Be Determined"}</span>
+    </div>
+    <h2 class="detail__title">${missionName(launch)}</h2>
+    <p class="detail__sub">${rocketName(launch) || ""} - ${providerName(launch) || ""}</p>
+    <div class="detail__count" id="detail-count">--</div>
+    <dl class="detail__grid">
+      ${facts.map(([key, value]) => `<div><dt>${key}</dt><dd>${value}</dd></div>`).join("")}
+    </dl>
+    ${launch.mission && launch.mission.description ? `<h3>Mission</h3><p class="detail__desc">${launch.mission.description}</p>` : ""}
+    ${hasCoords ? `<h3>Launch site</h3><div class="detail__map"><iframe title="Launch site map" loading="lazy" src="${mapEmbed(launch.pad.latitude, launch.pad.longitude)}"></iframe></div>` : ""}
+    <div class="detail__actions">
+      ${video ? `<a class="btn" href="${video}" target="_blank" rel="noopener">${launch.webcast_live ? "Watch live" : "Webcast"}</a>` : ""}
+      <button type="button" class="btn" data-action="ics">Add to calendar</button>
+      ${launch.pad && launch.pad.map_url ? `<a class="btn" href="${launch.pad.map_url}" target="_blank" rel="noopener">Open in Maps</a>` : ""}
+      ${info ? `<a class="btn" href="${info}" target="_blank" rel="noopener">Mission info</a>` : ""}
+    </div>`;
+
+  const icsButton = detailBody.querySelector('[data-action="ics"]');
+  if (icsButton) icsButton.addEventListener("click", () => downloadIcs(launch));
+
+  detail.dataset.id = id;
+  if (!detail.open) detail.showModal();
+  detail.querySelector(".detail__panel").scrollTop = 0;
+  tick();
+}
+
+function closeDetail() {
+  if (detail.open) detail.close();
+  delete detail.dataset.id;
+}
+
+function icsDate(date) {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
+function icsEscape(text) {
+  return String(text || "")
+    .replace(/[\\;,]/g, (c) => "\\" + c)
+    .replace(/\n/g, "\\n");
+}
+
+function downloadIcs(launch) {
+  const start = new Date(launch.net);
+  const end =
+    launch.window_end && new Date(launch.window_end) > start
+      ? new Date(launch.window_end)
+      : new Date(start.getTime() + HOUR);
+
+  const body = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Zero Hour//Launch Tracker//EN",
+    "BEGIN:VEVENT",
+    `UID:${launch.id}@zerohour`,
+    `DTSTAMP:${icsDate(new Date())}`,
+    `DTSTART:${icsDate(start)}`,
+    `DTEND:${icsDate(end)}`,
+    `SUMMARY:${icsEscape(`Launch: ${missionName(launch)} (${rocketName(launch) || ""})`)}`,
+    `LOCATION:${icsEscape((launch.pad && launch.pad.name) || "")}`,
+    `DESCRIPTION:${icsEscape(`${providerName(launch) || ""}\n\n${(launch.mission && launch.mission.description) || ""}`)}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+
+  const blob = new Blob([body], { type: "text/calendar" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = (launch.slug || "launch") + ".ics";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function wire() {
@@ -236,6 +364,19 @@ function wire() {
       chip.classList.toggle("is-active", chip.dataset.status === "all");
     }
     renderLaunches();
+  });
+
+  list.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-id]");
+    if (button) openDetail(button.dataset.id);
+  });
+
+  document.querySelector("#detail-close").addEventListener("click", closeDetail);
+  detail.addEventListener("click", (event) => {
+    if (event.target === detail) closeDetail();
+  });
+  detail.addEventListener("close", () => {
+    delete detail.dataset.id;
   });
 }
 
