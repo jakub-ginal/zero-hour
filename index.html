@@ -30,7 +30,27 @@
   </section>
 
   <main>
+    <div class="toolbar">
+      <input type="search" id="search" class="search" placeholder="Search mission, rocket, provider, pad...">
+
+      <div class="chips" id="status-chips">
+        <button type="button" class="chip is-active" data-status="all">All</button>
+        <button type="button" class="chip" data-status="Go">Go</button>
+        <button type="button" class="chip" data-status="TBC">TBC</button>
+        <button type="button" class="chip" data-status="TBD">TBD</button>
+      </div>
+
+      <select id="provider" class="provider">
+        <option value="">All providers</option>
+      </select>
+    </div>
+
     <div id="launches" class="grid"></div>
+
+    <div class="no-results" id="no-results" hidden>
+      <p>No launches match those filters.</p>
+      <button type="button" class="btn" id="clear-filters">Clear filters</button>
+    </div>
   </main>
 
   <footer class="footer">
