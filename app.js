@@ -6,14 +6,23 @@ const DAY = 24 * HOUR;
 const list = document.querySelector("#launches");
 const status = document.querySelector("#status");
 const hero = document.querySelector("#hero");
+const search = document.querySelector("#search");
+const statusChips = document.querySelector("#status-chips");
+const providerSelect = document.querySelector("#provider");
+const noResults = document.querySelector("#no-results");
 
 let launches = [];
 let nextLaunch = null;
+const filters = { q: "", status: "all", provider: "" };
 
 const STATUS_CLASS = { GO: "go", TBC: "tbc", TBD: "tbd", HOLD: "hold" };
 
 function statusClass(abbrev) {
   return STATUS_CLASS[(abbrev || "").toUpperCase()] || "tbd";
+}
+
+function statusAbbrev(launch) {
+  return (launch.status && launch.status.abbrev) || "TBD";
 }
 
 function pad(value) {
@@ -62,6 +71,10 @@ function providerName(launch) {
   return launch.launch_service_provider && launch.launch_service_provider.name;
 }
 
+function padName(launch) {
+  return launch.pad && (launch.pad.name || (launch.pad.location && launch.pad.location.name));
+}
+
 function pickNextLaunch() {
   const now = Date.now();
   nextLaunch = launches.find((l) => new Date(l.net) > now - 10 * 60 * 1000) || launches[0] || null;
@@ -103,10 +116,41 @@ function tick() {
   }
 }
 
+function matches(launch) {
+  if (filters.status !== "all" && statusAbbrev(launch) !== filters.status) {
+    return false;
+  }
+
+  const provider = providerName(launch) || "Unknown provider";
+  if (filters.provider && provider !== filters.provider) {
+    return false;
+  }
+
+  if (!filters.q) {
+    return true;
+  }
+
+  const haystack = [
+    launch.name,
+    rocketName(launch),
+    provider,
+    launch.mission && launch.mission.name,
+    launch.mission && launch.mission.orbit && launch.mission.orbit.name,
+    launch.pad && launch.pad.name,
+    launch.pad && launch.pad.location && launch.pad.location.name,
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return filters.q
+    .toLowerCase()
+    .split(/\s+/)
+    .every((term) => haystack.includes(term));
+}
+
 function card(launch) {
   const image = launch.image && (launch.image.thumbnail_url || launch.image.image_url);
-  const pad = launch.pad && (launch.pad.name || (launch.pad.location && launch.pad.location.name));
-  const abbrev = (launch.status && launch.status.abbrev) || "TBD";
+  const abbrev = statusAbbrev(launch);
   const statusName = (launch.status && launch.status.name) || "To Be Determined";
 
   return `
@@ -122,12 +166,77 @@ function card(launch) {
         <div class="card__foot">
           <div class="card__where">
             <span class="card__time">${formatDate(launch.net)}</span>
-            <span class="card__pad">${pad || ""}</span>
+            <span class="card__pad">${padName(launch) || ""}</span>
           </div>
           <span class="card__countdown" data-countdown="${launch.id}"></span>
         </div>
       </div>
     </article>`;
+}
+
+function renderLaunches() {
+  const filtered = launches.filter(matches);
+  list.innerHTML = filtered.map(card).join("");
+  noResults.hidden = filtered.length > 0 || launches.length === 0;
+  status.textContent =
+    filtered.length === launches.length
+      ? `${launches.length} upcoming launches`
+      : `${filtered.length} of ${launches.length} launches`;
+  tick();
+}
+
+function renderProviders() {
+  const counts = new Map();
+  for (const launch of launches) {
+    const name = providerName(launch) || "Unknown provider";
+    counts.set(name, (counts.get(name) || 0) + 1);
+  }
+
+  providerSelect.innerHTML =
+    `<option value="">All providers</option>` +
+    [...counts]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([name, count]) => `<option value="${name}">${name} (${count})</option>`)
+      .join("");
+  providerSelect.value = filters.provider;
+}
+
+function wire() {
+  let searchTimer;
+  search.addEventListener("input", (event) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      filters.q = event.target.value.trim();
+      renderLaunches();
+    }, 150);
+  });
+
+  statusChips.addEventListener("click", (event) => {
+    const chip = event.target.closest(".chip");
+    if (!chip) return;
+    for (const other of statusChips.querySelectorAll(".chip")) {
+      other.classList.toggle("is-active", other === chip);
+    }
+    filters.status = chip.dataset.status;
+    renderLaunches();
+  });
+
+  providerSelect.addEventListener("change", (event) => {
+    filters.provider = event.target.value;
+    renderLaunches();
+  });
+
+  document.querySelector("#clear-filters").addEventListener("click", () => {
+    filters.q = "";
+    filters.status = "all";
+    filters.provider = "";
+    search.value = "";
+    providerSelect.value = "";
+    for (const chip of statusChips.querySelectorAll(".chip")) {
+      chip.classList.toggle("is-active", chip.dataset.status === "all");
+    }
+    renderLaunches();
+  });
 }
 
 async function loadLaunches() {
@@ -141,14 +250,14 @@ async function loadLaunches() {
 
     pickNextLaunch();
     renderHero();
-    tick();
-    list.innerHTML = launches.map(card).join("");
-    status.textContent = launches.length + " upcoming launches";
+    renderProviders();
+    renderLaunches();
   } catch (error) {
     status.textContent = "Could not load launches. Try again later.";
     console.error(error);
   }
 }
 
+wire();
 loadLaunches();
 setInterval(tick, 1000);
