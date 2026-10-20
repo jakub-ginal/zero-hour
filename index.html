@@ -14,7 +14,13 @@
       <h1>Zero Hour</h1>
       <p>Upcoming orbital rocket launches.</p>
     </div>
-    <p id="status" class="status">Loading launches...</p>
+    <div class="header__right">
+      <div class="tz" role="group" aria-label="Time zone">
+        <button type="button" data-tz="local" aria-pressed="true">Local</button>
+        <button type="button" data-tz="utc" aria-pressed="false">UTC</button>
+      </div>
+      <p id="status" class="status">Loading launches...</p>
+    </div>
   </header>
 
   <section class="hero" id="hero">
@@ -45,7 +51,7 @@
       </select>
     </div>
 
-    <div id="launches" class="grid"></div>
+    <div id="launches" class="timeline"></div>
 
     <div class="no-results" id="no-results" hidden>
       <p>No launches match those filters.</p>
@@ -55,6 +61,7 @@
 
   <footer class="footer">
     <p>Launch data by <a href="https://thespacedevs.com" target="_blank" rel="noopener">The Space Devs</a> - Launch Library 2</p>
+    <p class="sync" id="sync">Awaiting data</p>
   </footer>
 
   <dialog class="detail" id="detail">

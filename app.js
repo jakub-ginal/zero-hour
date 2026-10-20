@@ -2,6 +2,7 @@ const API = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=24&mode=
 
 const HOUR = 3600 * 1000;
 const DAY = 24 * HOUR;
+const REFRESH_MS = 5 * 60 * 1000;
 
 const list = document.querySelector("#launches");
 const status = document.querySelector("#status");
@@ -13,10 +14,19 @@ const noResults = document.querySelector("#no-results");
 const detail = document.querySelector("#detail");
 const detailBody = document.querySelector("#detail-body");
 const detailMedia = document.querySelector("#detail-media");
+const sync = document.querySelector("#sync");
 
 let launches = [];
 let nextLaunch = null;
+let fetchedAt = null;
+let tz = "local";
 const filters = { q: "", status: "all", provider: "" };
+
+try {
+  tz = localStorage.getItem("zh-tz") === "utc" ? "utc" : "local";
+} catch {
+  /* storage unavailable: fall back to local time */
+}
 
 const STATUS_CLASS = { GO: "go", TBC: "tbc", TBD: "tbd", HOLD: "hold" };
 
@@ -32,14 +42,51 @@ function pad(value) {
   return String(value).padStart(2, "0");
 }
 
-function formatDate(value) {
-  return new Date(value).toLocaleString(undefined, {
+function tzOption() {
+  return tz === "utc" ? { timeZone: "UTC" } : {};
+}
+
+function fmt(value, opts) {
+  return new Date(value).toLocaleString(undefined, { ...opts, ...tzOption() });
+}
+
+function tzLabel() {
+  if (tz === "utc") return "UTC";
+  const part = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
+    .formatToParts(new Date())
+    .find((item) => item.type === "timeZoneName");
+  return part ? part.value : "Local";
+}
+
+function fullDate(value) {
+  return fmt(value, {
     weekday: "short",
     day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function timeOnly(value) {
+  return fmt(value, { hour: "2-digit", minute: "2-digit" });
+}
+
+function dateOnly(value) {
+  return fmt(value, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function weekday(value) {
+  return fmt(value, { weekday: "long" });
+}
+
+function dayKey(value) {
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    ...tzOption(),
+  }).format(new Date(value));
 }
 
 function countdownParts(ms) {
@@ -134,6 +181,12 @@ function tick() {
   }
 }
 
+function renderSync() {
+  if (!fetchedAt) return;
+  const mins = Math.max(0, Math.round((Date.now() - fetchedAt) / 60_000));
+  sync.textContent = mins === 0 ? "Synced just now" : `Synced ${mins} min ago`;
+}
+
 function matches(launch) {
   if (filters.status !== "all" && statusAbbrev(launch) !== filters.status) {
     return false;
@@ -183,7 +236,7 @@ function card(launch) {
         ${rocketName(launch) ? `<span class="card__rocket">${rocketName(launch)}</span>` : ""}
         <div class="card__foot">
           <div class="card__where">
-            <span class="card__time">${formatDate(launch.net)}</span>
+            <span class="card__time">${fullDate(launch.net)}</span>
             <span class="card__pad">${padName(launch) || ""}</span>
           </div>
           <span class="card__countdown" data-countdown="${launch.id}"></span>
@@ -192,15 +245,58 @@ function card(launch) {
     </button>`;
 }
 
+function groupFor(launch, todayKey, tomorrowKey, now) {
+  const net = new Date(launch.net);
+  const key = dayKey(net);
+  let rel;
+  if (key === todayKey) rel = "Today";
+  else if (key === tomorrowKey) rel = "Tomorrow";
+  else if (net - now < 6 * DAY) rel = weekday(net);
+  else rel = fmt(net, { weekday: "short", day: "numeric" });
+  return { key, rel, date: dateOnly(net), today: key === todayKey };
+}
+
 function renderLaunches() {
+  const now = Date.now();
   const filtered = launches.filter(matches);
-  list.innerHTML = filtered.map(card).join("");
+  const todayKey = dayKey(new Date(now));
+  const tomorrowKey = dayKey(new Date(now + DAY));
+
+  const groups = [];
+  const byKey = new Map();
+  for (const launch of filtered) {
+    const group = groupFor(launch, todayKey, tomorrowKey, now);
+    if (!byKey.has(group.key)) {
+      byKey.set(group.key, { ...group, items: [] });
+      groups.push(byKey.get(group.key));
+    }
+    byKey.get(group.key).items.push(launch);
+  }
+
+  list.innerHTML = groups
+    .map(
+      (group) => `
+      <section class="day${group.today ? " is-today" : ""}">
+        <header class="day__label">
+          <span class="day__rel">${group.rel}</span>
+          <span class="day__date">${group.date}</span>
+        </header>
+        <div class="day__cards">${group.items.map(card).join("")}</div>
+      </section>`,
+    )
+    .join("");
+
   noResults.hidden = filtered.length > 0 || launches.length === 0;
   status.textContent =
     filtered.length === launches.length
       ? `${launches.length} upcoming launches`
       : `${filtered.length} of ${launches.length} launches`;
   tick();
+}
+
+function renderSkeletons() {
+  const skeleton = `<div class="card skeleton"><div class="card__media"></div><div class="card__body"><div class="sk-line" style="width:30%"></div><div class="sk-line" style="width:75%;height:18px"></div><div class="sk-line" style="width:50%"></div></div></div>`;
+  list.innerHTML = `<section class="day"><header class="day__label"><span class="sk-line" style="width:70px"></span></header><div class="day__cards">${skeleton.repeat(3)}</div></section>`;
 }
 
 function renderProviders() {
@@ -227,7 +323,7 @@ function mapEmbed(lat, lon) {
 
 function windowText(launch) {
   if (!launch.window_start || !launch.window_end) return "Not published";
-  return `${formatDate(launch.window_start)} - ${formatDate(launch.window_end)}`;
+  return `${fullDate(launch.window_start)} - ${fullDate(launch.window_end)}`;
 }
 
 function openDetail(id) {
@@ -239,7 +335,7 @@ function openDetail(id) {
 
   const abbrev = statusAbbrev(launch);
   const facts = [
-    ["Liftoff", formatDate(launch.net)],
+    ["Liftoff", fullDate(launch.net)],
     ["Window", windowText(launch)],
     ["Rocket", rocketName(launch) || "Unknown"],
     ["Provider", providerName(launch) || "Unknown"],
@@ -329,6 +425,23 @@ function downloadIcs(launch) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function setTz(value) {
+  tz = value === "utc" ? "utc" : "local";
+  try {
+    localStorage.setItem("zh-tz", tz);
+  } catch {
+    /* storage unavailable */
+  }
+  for (const button of document.querySelectorAll("[data-tz]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.tz === tz));
+  }
+  if (!launches.length) return;
+  renderHero();
+  renderLaunches();
+  renderSync();
+  if (detail.open && detail.dataset.id) openDetail(detail.dataset.id);
+}
+
 function wire() {
   let searchTimer;
   search.addEventListener("input", (event) => {
@@ -366,6 +479,10 @@ function wire() {
     renderLaunches();
   });
 
+  for (const button of document.querySelectorAll("[data-tz]")) {
+    button.addEventListener("click", () => setTz(button.dataset.tz));
+  }
+
   list.addEventListener("click", (event) => {
     const button = event.target.closest("[data-id]");
     if (button) openDetail(button.dataset.id);
@@ -388,17 +505,23 @@ async function loadLaunches() {
     }
     const data = await response.json();
     launches = (data.results || []).sort((a, b) => new Date(a.net) - new Date(b.net));
+    fetchedAt = Date.now();
 
     pickNextLaunch();
     renderHero();
     renderProviders();
     renderLaunches();
+    renderSync();
   } catch (error) {
     status.textContent = "Could not load launches. Try again later.";
     console.error(error);
   }
 }
 
+renderSkeletons();
 wire();
+setTz(tz);
 loadLaunches();
 setInterval(tick, 1000);
+setInterval(renderSync, 30_000);
+setInterval(loadLaunches, REFRESH_MS);

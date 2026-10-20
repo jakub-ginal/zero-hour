@@ -56,6 +56,34 @@ a {
   color: var(--text-3);
   font-size: 13px;
 }
+.header__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+.tz {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.tz button {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.tz button[aria-pressed="true"] {
+  background: var(--text);
+  color: var(--bg);
+}
 
 main {
   max-width: 1200px;
@@ -152,10 +180,69 @@ main {
   background: rgba(255, 255, 255, 0.05);
 }
 
-.grid {
+.timeline {
+  position: relative;
+}
+.day {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 28px;
+  padding-bottom: 40px;
+}
+.day__label {
+  position: sticky;
+  top: 20px;
+  align-self: start;
+  text-align: right;
+  padding-right: 20px;
+  border-right: 1px solid var(--line);
+}
+.day__rel {
+  display: block;
+  font-size: 17px;
+  font-weight: 600;
+}
+.day.is-today .day__rel {
+  color: var(--accent-2);
+}
+.day__date {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.day__cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
   gap: 18px;
+}
+
+.skeleton {
+  pointer-events: none;
+}
+.sk-line,
+.skeleton .card__media {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite linear;
+}
+.sk-line {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
 }
 
 .card {
@@ -479,6 +566,40 @@ main {
   max-width: 1200px;
   margin: 0 auto;
   padding: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 28px;
   color: var(--text-3);
   font-size: 13px;
+}
+.footer p {
+  margin: 0;
+}
+.sync {
+  margin-left: auto !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .day {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .day__label {
+    position: static;
+    text-align: left;
+    padding-right: 0;
+    border-right: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .header__right {
+    align-items: flex-start;
+  }
+  .sync {
+    margin-left: 0 !important;
+  }
 }
