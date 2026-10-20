@@ -1,3 +1,6 @@
+import { startAscent } from "./ascent.js";
+import { startStarfield } from "./starfield.js";
+
 const API = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=24&mode=normal";
 
 const HOUR = 3600 * 1000;
@@ -7,6 +10,7 @@ const REFRESH_MS = 5 * 60 * 1000;
 const list = document.querySelector("#launches");
 const status = document.querySelector("#status");
 const hero = document.querySelector("#hero");
+const heroContent = document.querySelector("#hero-content");
 const search = document.querySelector("#search");
 const statusChips = document.querySelector("#status-chips");
 const providerSelect = document.querySelector("#provider");
@@ -141,10 +145,10 @@ function pickNextLaunch() {
 
 function renderHero() {
   if (!nextLaunch) {
-    hero.innerHTML = `<p class="hero__eyebrow">Next launch</p><h2 class="hero__title">No upcoming launches</h2>`;
+    heroContent.innerHTML = `<p class="hero__eyebrow">Next launch</p><h2 class="hero__title">No upcoming launches</h2>`;
     return;
   }
-  hero.innerHTML = `
+  heroContent.innerHTML = `
     <p class="hero__eyebrow">Next launch</p>
     <h2 class="hero__title">${missionName(nextLaunch)}</h2>
     <p class="hero__sub">${rocketName(nextLaunch) || "Unknown rocket"} - ${providerName(nextLaunch) || "Unknown provider"}</p>
@@ -517,6 +521,9 @@ async function loadLaunches() {
     console.error(error);
   }
 }
+
+startStarfield(document.querySelector("#starfield"));
+startAscent(document.querySelector("#ascent"), hero);
 
 renderSkeletons();
 wire();

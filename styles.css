@@ -32,6 +32,21 @@ a {
   color: var(--accent-2);
 }
 
+#starfield {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+.header,
+main,
+.footer {
+  position: relative;
+  z-index: 1;
+}
+
 .header {
   max-width: 1200px;
   margin: 0 auto;
@@ -363,9 +378,39 @@ main {
 }
 
 .hero {
+  position: relative;
+  overflow: hidden;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 24px 24px 8px;
+  padding: 40px 24px 140px;
+}
+.hero__ascent {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+.hero__planet {
+  position: absolute;
+  left: 50%;
+  bottom: -1250px;
+  width: 2400px;
+  height: 1400px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 0%, #0d1428 0%, #070a14 45%, #05060b 72%);
+  box-shadow:
+    0 -1px 0 rgba(150, 190, 255, 0.4),
+    0 -10px 40px -4px rgba(90, 150, 255, 0.35),
+    0 -40px 120px -20px rgba(255, 90, 31, 0.18);
+  pointer-events: none;
+  z-index: 0;
+}
+.hero__content {
+  position: relative;
+  z-index: 1;
 }
 .hero__eyebrow {
   margin: 0 0 10px;
