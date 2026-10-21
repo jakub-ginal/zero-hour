@@ -19,6 +19,10 @@ const detail = document.querySelector("#detail");
 const detailBody = document.querySelector("#detail-body");
 const detailMedia = document.querySelector("#detail-media");
 const sync = document.querySelector("#sync");
+const radarBlips = document.querySelector("#radar-blips");
+const boot = document.querySelector("#boot");
+const bootLog = document.querySelector("#boot-log");
+const bootProgress = document.querySelector("#boot-progress");
 
 let launches = [];
 let nextLaunch = null;
@@ -148,6 +152,8 @@ function renderHero() {
     heroContent.innerHTML = `<p class="hero__eyebrow">Next launch</p><h2 class="hero__title">No upcoming launches</h2>`;
     return;
   }
+  const providers = new Set(launches.map((launch) => providerName(launch) || "Unknown"));
+
   heroContent.innerHTML = `
     <p class="hero__eyebrow">Next launch</p>
     <h2 class="hero__title">${missionName(nextLaunch)}</h2>
@@ -157,7 +163,65 @@ function renderHero() {
       <div class="countdown__unit"><strong data-unit="h">00</strong><span>Hours</span></div>
       <div class="countdown__unit"><strong data-unit="m">00</strong><span>Minutes</span></div>
       <div class="countdown__unit"><strong data-unit="s">00</strong><span>Seconds</span></div>
+    </div>
+    <div class="hero__stats">
+      <div class="hero__stat"><b>${launches.length}</b><span>Tracked</span></div>
+      <div class="hero__stat"><b>${providers.size}</b><span>Providers</span></div>
+      <div class="hero__stat"><b>${timeOnly(nextLaunch.net)}</b><span>Next lift-off</span></div>
     </div>`;
+}
+
+function radarPoint(lat, lon) {
+  const phi = (lat * Math.PI) / 180;
+  const theta = (lon * Math.PI) / 180;
+  return {
+    x: 50 + Math.cos(phi) * Math.sin(theta) * 44,
+    y: 50 - Math.sin(phi) * 44,
+  };
+}
+
+function renderRadar() {
+  const points = [];
+  for (const launch of launches) {
+    const pad = launch.pad;
+    if (!pad || pad.latitude == null || pad.longitude == null) continue;
+    points.push(radarPoint(pad.latitude, pad.longitude));
+  }
+
+  radarBlips.innerHTML = points
+    .slice(0, 18)
+    .map(
+      (point, index) =>
+        `<span class="radar__blip" style="--x:${point.x.toFixed(2)}%;--y:${point.y.toFixed(2)}%;--delay:${(index * 0.17).toFixed(2)}s"></span>`,
+    )
+    .join("");
+}
+
+function runBoot() {
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) {
+    boot.classList.add("is-done");
+    return;
+  }
+
+  const lines = [
+    "Uplink established",
+    "Fetching launch window",
+    "Synchronizing clocks",
+    "Trajectory locked",
+  ];
+
+  lines.forEach((line, index) => {
+    setTimeout(() => {
+      const item = document.createElement("li");
+      item.textContent = line;
+      bootLog.appendChild(item);
+      requestAnimationFrame(() => item.classList.add("is-on"));
+      bootProgress.style.width = `${Math.round(((index + 1) / lines.length) * 100)}%`;
+    }, 220 + index * 460);
+  });
+
+  setTimeout(() => boot.classList.add("is-done"), 220 + lines.length * 460 + 400);
 }
 
 function tick() {
@@ -515,6 +579,7 @@ async function loadLaunches() {
     renderHero();
     renderProviders();
     renderLaunches();
+    renderRadar();
     renderSync();
   } catch (error) {
     status.textContent = "Could not load launches. Try again later.";
@@ -524,6 +589,17 @@ async function loadLaunches() {
 
 startStarfield(document.querySelector("#starfield"));
 startAscent(document.querySelector("#ascent"), hero);
+
+try {
+  if (sessionStorage.getItem("zh-booted") === "1") {
+    boot.classList.add("is-done");
+  } else {
+    runBoot();
+    sessionStorage.setItem("zh-booted", "1");
+  }
+} catch {
+  runBoot();
+}
 
 renderSkeletons();
 wire();

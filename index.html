@@ -28,15 +28,28 @@
   <section class="hero" id="hero">
     <canvas id="ascent" class="hero__ascent" aria-hidden="true"></canvas>
     <div class="hero__planet" aria-hidden="true"></div>
-    <div class="hero__content" id="hero-content">
-      <p class="hero__eyebrow">Next launch</p>
-      <h2 class="hero__title" id="hero-title">Loading...</h2>
-      <p class="hero__sub" id="hero-sub"></p>
-      <div class="countdown" id="hero-countdown">
-        <div class="countdown__unit"><strong data-unit="d">00</strong><span>Days</span></div>
-        <div class="countdown__unit"><strong data-unit="h">00</strong><span>Hours</span></div>
-        <div class="countdown__unit"><strong data-unit="m">00</strong><span>Minutes</span></div>
-        <div class="countdown__unit"><strong data-unit="s">00</strong><span>Seconds</span></div>
+    <div class="hero__layout">
+      <div class="hero__content" id="hero-content">
+        <p class="hero__eyebrow">Next launch</p>
+        <h2 class="hero__title" id="hero-title">Loading...</h2>
+        <p class="hero__sub" id="hero-sub"></p>
+        <div class="countdown" id="hero-countdown">
+          <div class="countdown__unit"><strong data-unit="d">00</strong><span>Days</span></div>
+          <div class="countdown__unit"><strong data-unit="h">00</strong><span>Hours</span></div>
+          <div class="countdown__unit"><strong data-unit="m">00</strong><span>Minutes</span></div>
+          <div class="countdown__unit"><strong data-unit="s">00</strong><span>Seconds</span></div>
+        </div>
+        <div class="hero__stats">
+          <div class="hero__stat"><b id="stat-count">--</b><span>Tracked</span></div>
+          <div class="hero__stat"><b id="stat-providers">--</b><span>Providers</span></div>
+          <div class="hero__stat"><b id="stat-window">--</b><span>Next lift-off</span></div>
+        </div>
+      </div>
+      <div class="radar" aria-hidden="true">
+        <div class="radar__grid"></div>
+        <div class="radar__sweep"></div>
+        <div class="radar__blips" id="radar-blips"></div>
+        <span class="radar__tag">Live traffic</span>
       </div>
     </div>
   </section>
@@ -69,6 +82,15 @@
     <p>Launch data by <a href="https://thespacedevs.com" target="_blank" rel="noopener">The Space Devs</a> - Launch Library 2</p>
     <p class="sync" id="sync">Awaiting data</p>
   </footer>
+
+  <div class="boot" id="boot" aria-hidden="true">
+    <div class="boot__inner">
+      <p class="boot__brand">Zero Hour</p>
+      <p class="boot__copy">Establishing telemetry uplink</p>
+      <ul class="boot__log" id="boot-log"></ul>
+      <div class="boot__bar"><span id="boot-progress"></span></div>
+    </div>
+  </div>
 
   <dialog class="detail" id="detail">
     <div class="detail__panel">

@@ -408,9 +408,137 @@ main {
   pointer-events: none;
   z-index: 0;
 }
+.hero__layout {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 48px;
+}
 .hero__content {
   position: relative;
   z-index: 1;
+  min-width: 0;
+}
+.hero__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 40px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.hero__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.hero__stat b {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+}
+.hero__stat span {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.radar {
+  position: relative;
+  flex: 0 0 240px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  border: 1px solid rgba(150, 190, 255, 0.22);
+  background:
+    radial-gradient(circle, rgba(99, 230, 255, 0.07) 0%, transparent 62%),
+    rgba(8, 11, 20, 0.55);
+  overflow: hidden;
+}
+.radar::before,
+.radar::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(150, 190, 255, 0.12);
+}
+.radar::before {
+  inset: 16%;
+}
+.radar::after {
+  inset: 34%;
+}
+.radar__grid {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(150, 190, 255, 0.1), rgba(150, 190, 255, 0.1)) center / 1px 100% no-repeat,
+    linear-gradient(rgba(150, 190, 255, 0.1), rgba(150, 190, 255, 0.1)) center / 100% 1px no-repeat;
+}
+.radar__sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(99, 230, 255, 0.3),
+    rgba(99, 230, 255, 0.08) 18%,
+    transparent 34%
+  );
+  animation: sweep 5s linear infinite;
+}
+.radar__blips {
+  position: absolute;
+  inset: 0;
+}
+.radar__blip {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  box-shadow: 0 0 10px var(--accent-2);
+  animation: blip 2.6s ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+.radar__tag {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+@keyframes sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes blip {
+  0%,
+  70% {
+    opacity: 0.3;
+    transform: scale(0.7);
+  }
+  85% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.3;
+    transform: scale(0.7);
+  }
 }
 .hero__eyebrow {
   margin: 0 0 10px;
@@ -625,6 +753,79 @@ main {
   margin-left: auto !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
+}
+
+.boot {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  transition: opacity 0.6s ease;
+}
+.boot.is-done {
+  opacity: 0;
+  pointer-events: none;
+}
+.boot__inner {
+  width: min(440px, 86vw);
+}
+.boot__brand {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.boot__copy {
+  margin: 6px 0 22px;
+  color: var(--text-3);
+  font-size: 13px;
+}
+.boot__log {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  min-height: 108px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.boot__log li {
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+.boot__log li.is-on {
+  opacity: 1;
+  transform: none;
+}
+.boot__log li::before {
+  content: "> ";
+  color: var(--accent-2);
+}
+.boot__bar {
+  height: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+.boot__bar span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 0.55s ease;
+}
+
+@media (max-width: 900px) {
+  .hero__layout {
+    display: block;
+  }
+  .radar {
+    display: none;
+  }
 }
 
 @media (max-width: 720px) {
