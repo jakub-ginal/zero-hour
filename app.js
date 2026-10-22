@@ -1,7 +1,7 @@
 import { startAscent } from "./ascent.js";
 import { startStarfield } from "./starfield.js";
 
-const API = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=24&mode=normal";
+const API = "/api/launches?limit=24";
 
 const HOUR = 3600 * 1000;
 const DAY = 24 * HOUR;
@@ -27,6 +27,7 @@ const bootProgress = document.querySelector("#boot-progress");
 let launches = [];
 let nextLaunch = null;
 let fetchedAt = null;
+let stale = false;
 let tz = "local";
 const filters = { q: "", status: "all", provider: "" };
 
@@ -122,24 +123,15 @@ function missionName(launch) {
 }
 
 function rocketName(launch) {
-  return launch.rocket && launch.rocket.configuration && launch.rocket.configuration.name;
+  return launch.rocket;
 }
 
 function providerName(launch) {
-  return launch.launch_service_provider && launch.launch_service_provider.name;
+  return launch.provider && launch.provider.name;
 }
 
 function padName(launch) {
-  return launch.pad && (launch.pad.name || (launch.pad.location && launch.pad.location.name));
-}
-
-function firstUrl(items) {
-  if (Array.isArray(items)) {
-    for (const item of items) {
-      if (item && item.url) return item.url;
-    }
-  }
-  return null;
+  return launch.pad && launch.pad.name;
 }
 
 function pickNextLaunch() {
@@ -251,6 +243,10 @@ function tick() {
 
 function renderSync() {
   if (!fetchedAt) return;
+  if (stale) {
+    sync.textContent = "Showing cached data";
+    return;
+  }
   const mins = Math.max(0, Math.round((Date.now() - fetchedAt) / 60_000));
   sync.textContent = mins === 0 ? "Synced just now" : `Synced ${mins} min ago`;
 }
@@ -274,9 +270,9 @@ function matches(launch) {
     rocketName(launch),
     provider,
     launch.mission && launch.mission.name,
-    launch.mission && launch.mission.orbit && launch.mission.orbit.name,
+    launch.mission && launch.mission.orbit,
     launch.pad && launch.pad.name,
-    launch.pad && launch.pad.location && launch.pad.location.name,
+    launch.pad && launch.pad.location,
   ]
     .join(" ")
     .toLowerCase();
@@ -288,7 +284,7 @@ function matches(launch) {
 }
 
 function card(launch) {
-  const image = launch.image && (launch.image.thumbnail_url || launch.image.image_url);
+  const image = launch.thumbnail_url || launch.image_url;
   const abbrev = statusAbbrev(launch);
   const statusName = (launch.status && launch.status.name) || "To Be Determined";
 
@@ -398,7 +394,7 @@ function openDetail(id) {
   const launch = launches.find((l) => l.id === id);
   if (!launch) return;
 
-  const image = launch.image && (launch.image.image_url || launch.image.thumbnail_url);
+  const image = launch.image_url || launch.thumbnail_url;
   detailMedia.innerHTML = image ? `<img src="${image}" alt="">` : "";
 
   const abbrev = statusAbbrev(launch);
@@ -408,14 +404,14 @@ function openDetail(id) {
     ["Rocket", rocketName(launch) || "Unknown"],
     ["Provider", providerName(launch) || "Unknown"],
     ["Mission type", (launch.mission && launch.mission.type) || "Unknown"],
-    ["Orbit", (launch.mission && launch.mission.orbit && launch.mission.orbit.name) || "Unknown"],
+    ["Orbit", (launch.mission && launch.mission.orbit) || "Unknown"],
     ["Pad", (launch.pad && launch.pad.name) || "Unknown"],
-    ["Location", (launch.pad && launch.pad.location && launch.pad.location.name) || "Unknown"],
+    ["Location", (launch.pad && launch.pad.location) || "Unknown"],
   ];
 
   const hasCoords = launch.pad && launch.pad.latitude != null && launch.pad.longitude != null;
-  const video = firstUrl(launch.vid_urls);
-  const info = firstUrl(launch.info_urls);
+  const video = launch.video_url;
+  const info = launch.info_url;
 
   detailBody.innerHTML = `
     <div class="detail__pills">
@@ -573,7 +569,8 @@ async function loadLaunches() {
     }
     const data = await response.json();
     launches = (data.results || []).sort((a, b) => new Date(a.net) - new Date(b.net));
-    fetchedAt = Date.now();
+    stale = Boolean(data.stale);
+    fetchedAt = data.fetched_at ? new Date(data.fetched_at).getTime() : Date.now();
 
     pickNextLaunch();
     renderHero();
