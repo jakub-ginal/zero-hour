@@ -28,6 +28,7 @@ let launches = [];
 let nextLaunch = null;
 let fetchedAt = null;
 let stale = false;
+let lastTrigger = null;
 let tz = "local";
 const filters = { q: "", status: "all", provider: "" };
 
@@ -45,6 +46,30 @@ function statusClass(abbrev) {
 
 function statusAbbrev(launch) {
   return (launch.status && launch.status.abbrev) || "TBD";
+}
+
+function esc(value) {
+  return String(value == null ? "" : value).replace(
+    /[&<>"']/g,
+    (char) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[char],
+  );
+}
+
+function safeUrl(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
+  } catch {
+    return null;
+  }
 }
 
 function pad(value) {
@@ -148,8 +173,8 @@ function renderHero() {
 
   heroContent.innerHTML = `
     <p class="hero__eyebrow">Next launch</p>
-    <h2 class="hero__title">${missionName(nextLaunch)}</h2>
-    <p class="hero__sub">${rocketName(nextLaunch) || "Unknown rocket"} - ${providerName(nextLaunch) || "Unknown provider"}</p>
+    <h2 class="hero__title">${esc(missionName(nextLaunch))}</h2>
+    <p class="hero__sub">${esc(rocketName(nextLaunch) || "Unknown rocket")} - ${esc(providerName(nextLaunch) || "Unknown provider")}</p>
     <div class="countdown" id="hero-countdown">
       <div class="countdown__unit"><strong data-unit="d">00</strong><span>Days</span></div>
       <div class="countdown__unit"><strong data-unit="h">00</strong><span>Hours</span></div>
@@ -284,26 +309,26 @@ function matches(launch) {
 }
 
 function card(launch) {
-  const image = launch.thumbnail_url || launch.image_url;
+  const image = safeUrl(launch.thumbnail_url || launch.image_url);
   const abbrev = statusAbbrev(launch);
   const statusName = (launch.status && launch.status.name) || "To Be Determined";
 
   return `
-    <button type="button" class="card" data-id="${launch.id}">
+    <button type="button" class="card" data-id="${esc(launch.id)}">
       <div class="card__media">
-        ${image ? `<img src="${image}" alt="" loading="lazy">` : ""}
-        <span class="pill pill--${statusClass(abbrev)}" title="${statusName}">${abbrev}</span>
+        ${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ""}
+        <span class="pill pill--${statusClass(abbrev)}" title="${esc(statusName)}">${esc(abbrev)}</span>
       </div>
       <div class="card__body">
-        <span class="card__provider">${providerName(launch) || "Unknown provider"}</span>
-        <h2 class="card__title">${missionName(launch)}</h2>
-        ${rocketName(launch) ? `<span class="card__rocket">${rocketName(launch)}</span>` : ""}
+        <span class="card__provider">${esc(providerName(launch) || "Unknown provider")}</span>
+        <h2 class="card__title">${esc(missionName(launch))}</h2>
+        ${rocketName(launch) ? `<span class="card__rocket">${esc(rocketName(launch))}</span>` : ""}
         <div class="card__foot">
           <div class="card__where">
-            <span class="card__time">${fullDate(launch.net)}</span>
-            <span class="card__pad">${padName(launch) || ""}</span>
+            <span class="card__time">${esc(fullDate(launch.net))}</span>
+            <span class="card__pad">${esc(padName(launch) || "")}</span>
           </div>
-          <span class="card__countdown" data-countdown="${launch.id}"></span>
+          <span class="card__countdown" data-countdown="${esc(launch.id)}"></span>
         </div>
       </div>
     </button>`;
@@ -355,12 +380,14 @@ function renderLaunches() {
     filtered.length === launches.length
       ? `${launches.length} upcoming launches`
       : `${filtered.length} of ${launches.length} launches`;
+  list.setAttribute("aria-busy", "false");
   tick();
 }
 
 function renderSkeletons() {
   const skeleton = `<div class="card skeleton"><div class="card__media"></div><div class="card__body"><div class="sk-line" style="width:30%"></div><div class="sk-line" style="width:75%;height:18px"></div><div class="sk-line" style="width:50%"></div></div></div>`;
   list.innerHTML = `<section class="day"><header class="day__label"><span class="sk-line" style="width:70px"></span></header><div class="day__cards">${skeleton.repeat(3)}</div></section>`;
+  list.setAttribute("aria-busy", "true");
 }
 
 function renderProviders() {
@@ -374,7 +401,7 @@ function renderProviders() {
     `<option value="">All providers</option>` +
     [...counts]
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([name, count]) => `<option value="${name}">${name} (${count})</option>`)
+      .map(([name, count]) => `<option value="${esc(name)}">${esc(name)} (${count})</option>`)
       .join("");
   providerSelect.value = filters.provider;
 }
@@ -394,8 +421,8 @@ function openDetail(id) {
   const launch = launches.find((l) => l.id === id);
   if (!launch) return;
 
-  const image = launch.image_url || launch.thumbnail_url;
-  detailMedia.innerHTML = image ? `<img src="${image}" alt="">` : "";
+  const image = safeUrl(launch.image_url || launch.thumbnail_url);
+  detailMedia.innerHTML = image ? `<img src="${esc(image)}" alt="">` : "";
 
   const abbrev = statusAbbrev(launch);
   const facts = [
@@ -409,28 +436,31 @@ function openDetail(id) {
     ["Location", (launch.pad && launch.pad.location) || "Unknown"],
   ];
 
-  const hasCoords = launch.pad && launch.pad.latitude != null && launch.pad.longitude != null;
-  const video = launch.video_url;
-  const info = launch.info_url;
+  const lat = Number(launch.pad && launch.pad.latitude);
+  const lon = Number(launch.pad && launch.pad.longitude);
+  const hasCoords = Number.isFinite(lat) && Number.isFinite(lon);
+  const video = safeUrl(launch.video_url);
+  const info = safeUrl(launch.info_url);
+  const mapUrl = safeUrl(launch.pad && launch.pad.map_url);
 
   detailBody.innerHTML = `
     <div class="detail__pills">
-      <span class="pill pill--${statusClass(abbrev)}">${abbrev}</span>
-      <span class="pill pill--muted">${(launch.status && launch.status.name) || "To Be Determined"}</span>
+      <span class="pill pill--${statusClass(abbrev)}">${esc(abbrev)}</span>
+      <span class="pill pill--muted">${esc((launch.status && launch.status.name) || "To Be Determined")}</span>
     </div>
-    <h2 class="detail__title">${missionName(launch)}</h2>
-    <p class="detail__sub">${rocketName(launch) || ""} - ${providerName(launch) || ""}</p>
+    <h2 class="detail__title" id="detail-title">${esc(missionName(launch))}</h2>
+    <p class="detail__sub">${esc(rocketName(launch) || "")} - ${esc(providerName(launch) || "")}</p>
     <div class="detail__count" id="detail-count">--</div>
     <dl class="detail__grid">
-      ${facts.map(([key, value]) => `<div><dt>${key}</dt><dd>${value}</dd></div>`).join("")}
+      ${facts.map(([key, value]) => `<div><dt>${key}</dt><dd>${esc(value)}</dd></div>`).join("")}
     </dl>
-    ${launch.mission && launch.mission.description ? `<h3>Mission</h3><p class="detail__desc">${launch.mission.description}</p>` : ""}
-    ${hasCoords ? `<h3>Launch site</h3><div class="detail__map"><iframe title="Launch site map" loading="lazy" src="${mapEmbed(launch.pad.latitude, launch.pad.longitude)}"></iframe></div>` : ""}
+    ${launch.mission && launch.mission.description ? `<h3>Mission</h3><p class="detail__desc">${esc(launch.mission.description)}</p>` : ""}
+    ${hasCoords ? `<h3>Launch site</h3><div class="detail__map"><iframe title="Launch site map" loading="lazy" src="${mapEmbed(lat, lon)}"></iframe></div>` : ""}
     <div class="detail__actions">
-      ${video ? `<a class="btn" href="${video}" target="_blank" rel="noopener">${launch.webcast_live ? "Watch live" : "Webcast"}</a>` : ""}
+      ${video ? `<a class="btn" href="${esc(video)}" target="_blank" rel="noopener">${launch.webcast_live ? "Watch live" : "Webcast"}</a>` : ""}
       <button type="button" class="btn" data-action="ics">Add to calendar</button>
-      ${launch.pad && launch.pad.map_url ? `<a class="btn" href="${launch.pad.map_url}" target="_blank" rel="noopener">Open in Maps</a>` : ""}
-      ${info ? `<a class="btn" href="${info}" target="_blank" rel="noopener">Mission info</a>` : ""}
+      ${mapUrl ? `<a class="btn" href="${esc(mapUrl)}" target="_blank" rel="noopener">Open in Maps</a>` : ""}
+      ${info ? `<a class="btn" href="${esc(info)}" target="_blank" rel="noopener">Mission info</a>` : ""}
     </div>`;
 
   const icsButton = detailBody.querySelector('[data-action="ics"]');
@@ -445,6 +475,8 @@ function openDetail(id) {
 function closeDetail() {
   if (detail.open) detail.close();
   delete detail.dataset.id;
+  if (lastTrigger && lastTrigger.isConnected !== false) lastTrigger.focus();
+  lastTrigger = null;
 }
 
 function icsDate(date) {
@@ -484,7 +516,8 @@ function downloadIcs(launch) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = (launch.slug || "launch") + ".ics";
+  const filename = String(launch.slug || "launch").replace(/[^\w.-]+/g, "-");
+  link.download = `${filename}.ics`;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -549,7 +582,9 @@ function wire() {
 
   list.addEventListener("click", (event) => {
     const button = event.target.closest("[data-id]");
-    if (button) openDetail(button.dataset.id);
+    if (!button) return;
+    lastTrigger = button;
+    openDetail(button.dataset.id);
   });
 
   document.querySelector("#detail-close").addEventListener("click", closeDetail);
@@ -579,7 +614,12 @@ async function loadLaunches() {
     renderRadar();
     renderSync();
   } catch (error) {
-    status.textContent = "Could not load launches. Try again later.";
+    list.setAttribute("aria-busy", "false");
+    status.innerHTML =
+      'Could not load launches. <button type="button" class="btn btn--inline" id="retry">Retry</button>';
+    const retry = document.querySelector("#retry");
+    if (retry) retry.addEventListener("click", loadLaunches);
+    sync.textContent = "Offline";
     console.error(error);
   }
 }

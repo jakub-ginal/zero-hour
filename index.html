@@ -6,9 +6,17 @@
   <title>Zero Hour - Upcoming Rocket Launches</title>
   <meta name="description" content="Upcoming orbital rocket launches worldwide.">
   <meta name="theme-color" content="#05060b">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  >
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <a class="skip" href="#launches">Skip to launches</a>
   <canvas id="starfield" aria-hidden="true"></canvas>
 
   <header class="header">
@@ -21,7 +29,7 @@
         <button type="button" data-tz="local" aria-pressed="true">Local</button>
         <button type="button" data-tz="utc" aria-pressed="false">UTC</button>
       </div>
-      <p id="status" class="status">Loading launches...</p>
+      <p id="status" class="status" role="status" aria-live="polite">Loading launches...</p>
     </div>
   </header>
 
@@ -70,9 +78,9 @@
       </select>
     </div>
 
-    <div id="launches" class="timeline"></div>
+    <div id="launches" class="timeline" aria-busy="true"></div>
 
-    <div class="no-results" id="no-results" hidden>
+    <div class="no-results" id="no-results" role="status" hidden>
       <p>No launches match those filters.</p>
       <button type="button" class="btn" id="clear-filters">Clear filters</button>
     </div>
@@ -92,7 +100,7 @@
     </div>
   </div>
 
-  <dialog class="detail" id="detail">
+  <dialog class="detail" id="detail" aria-labelledby="detail-title">
     <div class="detail__panel">
       <button type="button" class="detail__close" id="detail-close" aria-label="Close">&#215;</button>
       <div class="detail__media" id="detail-media"></div>
