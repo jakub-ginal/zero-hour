@@ -6,6 +6,7 @@ const API = "/api/launches?limit=24";
 const HOUR = 3600 * 1000;
 const DAY = 24 * HOUR;
 const REFRESH_MS = 5 * 60 * 1000;
+const PRECISE = new Set(["SEC", "MIN", "HR"]);
 
 const list = document.querySelector("#launches");
 const status = document.querySelector("#status");
@@ -37,6 +38,7 @@ let nextLaunch = null;
 let fetchedAt = null;
 let stale = false;
 let lastTrigger = null;
+let heroSignature = "";
 let tz = "local";
 const filters = { q: "", status: "all", provider: "" };
 
@@ -49,7 +51,12 @@ try {
 const STATUS_CLASS = { GO: "go", TBC: "tbc", TBD: "tbd", HOLD: "hold" };
 
 function statusClass(abbrev) {
-  return STATUS_CLASS[(abbrev || "").toUpperCase()] || "tbd";
+  const key = (abbrev || "").toUpperCase();
+  if (STATUS_CLASS[key]) return STATUS_CLASS[key];
+  if (key.includes("SUCCESS")) return "go";
+  if (key.includes("FAIL")) return "hold";
+  if (key.includes("FLIGHT")) return "tbc";
+  return "tbd";
 }
 
 function statusAbbrev(launch) {
@@ -100,16 +107,6 @@ function tzLabel() {
   return part ? part.value : "Local";
 }
 
-function fullDate(value) {
-  return fmt(value, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function timeOnly(value) {
   return fmt(value, { hour: "2-digit", minute: "2-digit" });
 }
@@ -143,8 +140,43 @@ function countdownParts(ms) {
   };
 }
 
-function shortCountdown(ms) {
-  const cd = countdownParts(ms);
+function isPrecise(launch) {
+  return !launch.net_precision || PRECISE.has(launch.net_precision);
+}
+
+function fuzzyDate(launch) {
+  const net = launch.net;
+  const precision = launch.net_precision || "";
+  if (precision === "DAY") return fmt(net, { weekday: "short", month: "short", day: "numeric" });
+  if (precision === "M") return fmt(net, { month: "long", year: "numeric" });
+  if (/^Q[1-4]$/.test(precision)) return `${precision} ${fmt(net, { year: "numeric" })}`;
+  if (/^H[12]$/.test(precision)) return `${precision} ${fmt(net, { year: "numeric" })}`;
+  return fmt(net, { year: "numeric" });
+}
+
+function whenText(launch) {
+  if (isPrecise(launch)) {
+    return fmt(launch.net, { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+  return `NET ${fuzzyDate(launch)}`;
+}
+
+function countryCode(code) {
+  return code && code.length === 2 ? code.toUpperCase() : "";
+}
+
+function countryLabel(code) {
+  const value = countryCode(code);
+  return value ? `<span class="country">${esc(value)}</span> · ` : "";
+}
+
+function shortCountdown(launch, now) {
+  const diff = new Date(launch.net) - now;
+  if (!isPrecise(launch)) {
+    if (launch.net_precision === "DAY" && diff > 0) return `T- ~${Math.ceil(diff / DAY)}d`;
+    return `NET ${fuzzyDate(launch)}`;
+  }
+  const cd = countdownParts(diff);
   const sign = cd.past ? "T+" : "T-";
   if (cd.d > 0) return `${sign} ${cd.d}d ${pad(cd.h)}h ${pad(cd.m)}m`;
   return `${sign} ${pad(cd.h)}:${pad(cd.m)}:${pad(cd.s)}`;
@@ -152,7 +184,15 @@ function shortCountdown(ms) {
 
 function missionName(launch) {
   const parts = launch.name.split(" | ");
-  return parts.length > 1 ? parts.slice(1).join(" | ") : launch.name;
+  if (parts.length > 1) return parts.slice(1).join(" | ");
+  return (launch.mission && launch.mission.name) || launch.name;
+}
+
+function statusPill(launch) {
+  if (launch.webcast_live) return `<span class="pill pill--live">Live</span>`;
+  const abbrev = statusAbbrev(launch);
+  const title = (launch.status && launch.status.description) || "";
+  return `<span class="pill pill--${statusClass(abbrev)}" title="${esc(title)}">${esc(abbrev)}</span>`;
 }
 
 function rocketName(launch) {
@@ -163,40 +203,67 @@ function providerName(launch) {
   return launch.provider && launch.provider.name;
 }
 
-function padName(launch) {
-  return launch.pad && launch.pad.name;
-}
-
 function pickNextLaunch() {
   const now = Date.now();
-  nextLaunch = launches.find((l) => new Date(l.net) > now - 10 * 60 * 1000) || launches[0] || null;
+  nextLaunch =
+    launches.find((launch) => isPrecise(launch) && new Date(launch.net) > now - 10 * 60 * 1000) ||
+    launches.find((launch) => new Date(launch.net) > now) ||
+    launches[0] ||
+    null;
 }
 
 function renderHero() {
   if (!nextLaunch) {
+    if (heroSignature === "empty") return;
+    heroSignature = "empty";
     heroContent.innerHTML = `<p class="hero__eyebrow">Next launch</p><h2 class="hero__title">No upcoming launches</h2>`;
     return;
   }
   const providers = new Set(launches.map((launch) => providerName(launch) || "Unknown"));
-  const windowLabel =
-    nextLaunch.window_start && nextLaunch.window_end
-      ? `${timeOnly(nextLaunch.window_start)} - ${timeOnly(nextLaunch.window_end)}`
-      : "To be confirmed";
+  const pad = nextLaunch.pad || {};
+  const signature = [
+    nextLaunch.id,
+    nextLaunch.net,
+    statusAbbrev(nextLaunch),
+    nextLaunch.webcast_live ? 1 : 0,
+    missionName(nextLaunch),
+    rocketName(nextLaunch),
+    providerName(nextLaunch),
+    pad.country_code,
+    pad.location,
+    launches.length,
+    providers.size,
+    tz,
+  ].join("|");
+  if (signature === heroSignature) return;
+  heroSignature = signature;
+  const liftoff = isPrecise(nextLaunch) ? `${whenText(nextLaunch)} ${tzLabel()}` : whenText(nextLaunch);
+  const title = missionName(nextLaunch)
+    .split(/\s+/)
+    .map(
+      (word, index) =>
+        `<span class="word"><span style="animation-delay:${(0.06 + index * 0.07).toFixed(2)}s">${esc(word)}</span></span>`,
+    )
+    .join(" ");
 
   heroContent.innerHTML = `
-    <p class="hero__eyebrow">Next launch</p>
-    <h2 class="hero__title">${esc(missionName(nextLaunch))}</h2>
-    <p class="hero__sub">${esc(rocketName(nextLaunch) || "Unknown rocket")} - ${esc(providerName(nextLaunch) || "Unknown provider")}</p>
-    <div class="countdown" id="hero-countdown">
+    <p class="hero__eyebrow">${nextLaunch.webcast_live ? "Live now" : "Next launch"}</p>
+    <h2 class="hero__title">${title}</h2>
+    <p class="hero__sub">${esc(rocketName(nextLaunch) || "Unknown rocket")} · ${esc(providerName(nextLaunch) || "Unknown provider")}</p>
+    ${
+      isPrecise(nextLaunch)
+        ? `<div class="countdown" id="hero-countdown">
       <div class="countdown__unit"><strong data-unit="d">00</strong><span>Days</span></div>
       <div class="countdown__unit"><strong data-unit="h">00</strong><span>Hours</span></div>
       <div class="countdown__unit"><strong data-unit="m">00</strong><span>Minutes</span></div>
       <div class="countdown__unit"><strong data-unit="s">00</strong><span>Seconds</span></div>
-    </div>
-    <dl class="hero__meta">
-      <div><dt>Provider</dt><dd>${esc(providerName(nextLaunch) || "Unknown")}</dd></div>
-      <div><dt>Pad</dt><dd>${esc(padName(nextLaunch) || "Unknown")}</dd></div>
-      <div><dt>Window</dt><dd>${esc(windowLabel)}</dd></div>
+    </div>`
+        : `<p class="hero__net">NET ${esc(fuzzyDate(nextLaunch))}</p>`
+    }
+    <dl class="hero__meta" id="hero-meta">
+      <div><dt>Status</dt><dd>${statusPill(nextLaunch)}</dd></div>
+      <div><dt>Liftoff</dt><dd>${esc(liftoff)}</dd></div>
+      <div><dt>Pad</dt><dd>${countryLabel(pad.country_code)}${esc(pad.location || pad.name || "Unknown")}</dd></div>
     </dl>
     <div class="hero__actions">
       <button type="button" class="btn btn--primary" id="hero-details">Mission briefing</button>
@@ -205,18 +272,20 @@ function renderHero() {
     <div class="hero__stats">
       <div class="hero__stat"><b>${launches.length}</b><span>Tracked</span></div>
       <div class="hero__stat"><b>${providers.size}</b><span>Providers</span></div>
-      <div class="hero__stat"><b>${timeOnly(nextLaunch.net)}</b><span>Next lift-off</span></div>
+      <div class="hero__stat"><b>${isPrecise(nextLaunch) ? timeOnly(nextLaunch.net) : fuzzyDate(nextLaunch)}</b><span>Next lift-off</span></div>
     </div>`;
 
   const detailsButton = heroContent.querySelector("#hero-details");
-  if (detailsButton) detailsButton.addEventListener("click", () => openDetail(nextLaunch.id));
+  if (detailsButton) {
+    detailsButton.addEventListener("click", () => {
+      lastTrigger = detailsButton;
+      openDetail(nextLaunch.id);
+    });
+  }
 
   const calendarButton = heroContent.querySelector("#hero-calendar");
   if (calendarButton) {
-    calendarButton.addEventListener("click", () => {
-      downloadIcs(nextLaunch);
-      showToast("Calendar event downloaded");
-    });
+    calendarButton.addEventListener("click", () => downloadIcs(nextLaunch));
   }
 }
 
@@ -322,13 +391,16 @@ function tick() {
 
   for (const el of document.querySelectorAll("[data-countdown]")) {
     const launch = launches.find((l) => l.id === el.dataset.countdown);
-    if (launch) el.textContent = shortCountdown(new Date(launch.net) - now);
+    if (!launch) continue;
+    el.textContent = shortCountdown(launch, now);
+    const diff = new Date(launch.net) - now;
+    el.closest(".card")?.classList.toggle("is-imminent", isPrecise(launch) && diff > 0 && diff < HOUR);
   }
 
   if (detail.open && detail.dataset.id) {
     const launch = launches.find((l) => l.id === detail.dataset.id);
     const el = document.querySelector("#detail-count");
-    if (launch && el) el.textContent = shortCountdown(new Date(launch.net) - now);
+    if (launch && el) el.textContent = shortCountdown(launch, now);
   }
 }
 
@@ -391,14 +463,19 @@ function matches(launch) {
 
 function card(launch) {
   const image = safeUrl(launch.thumbnail_url || launch.image_url);
-  const abbrev = statusAbbrev(launch);
-  const statusName = (launch.status && launch.status.name) || "To Be Determined";
+  const orbit = launch.mission && launch.mission.orbit_abbrev;
+  const time = isPrecise(launch) ? `${timeOnly(launch.net)} ${tzLabel()}` : `NET ${fuzzyDate(launch)}`;
+  const pad = launch.pad || {};
+  const where = pad.location || pad.name || "";
 
   return `
     <button type="button" class="card" data-id="${esc(launch.id)}">
       <div class="card__media">
         ${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ""}
-        <span class="pill pill--${statusClass(abbrev)}" title="${esc(statusName)}">${esc(abbrev)}</span>
+        <div class="card__badges">
+          ${statusPill(launch)}
+          ${orbit ? `<span class="pill pill--orbit" title="${esc((launch.mission && launch.mission.orbit) || "")}">${esc(orbit)}</span>` : ""}
+        </div>
       </div>
       <div class="card__body">
         <span class="card__provider">${esc(providerName(launch) || "Unknown provider")}</span>
@@ -406,16 +483,20 @@ function card(launch) {
         ${rocketName(launch) ? `<span class="card__rocket">${esc(rocketName(launch))}</span>` : ""}
         <div class="card__foot">
           <div class="card__where">
-            <span class="card__time">${esc(fullDate(launch.net))}</span>
-            <span class="card__pad">${esc(padName(launch) || "")}</span>
+            <span class="card__time">${esc(time)}</span>
+            <span class="card__pad">${countryLabel(pad.country_code)}${esc(where)}</span>
           </div>
-          <span class="card__countdown" data-countdown="${esc(launch.id)}"></span>
+          <span class="card__countdown" data-countdown="${esc(launch.id)}">${esc(shortCountdown(launch, Date.now()))}</span>
         </div>
       </div>
     </button>`;
 }
 
 function groupFor(launch, todayKey, tomorrowKey, now) {
+  if (!isPrecise(launch) && launch.net_precision !== "DAY") {
+    const label = fuzzyDate(launch);
+    return { key: `fuzzy:${label}`, rel: label, date: "Date to be confirmed", today: false };
+  }
   const net = new Date(launch.net);
   const key = dayKey(net);
   let rel;
@@ -494,8 +575,12 @@ function mapEmbed(lat, lon) {
 }
 
 function windowText(launch) {
-  if (!launch.window_start || !launch.window_end) return "Not published";
-  return `${fullDate(launch.window_start)} - ${fullDate(launch.window_end)}`;
+  if (!launch.window_start || !launch.window_end || !isPrecise(launch)) return "Not yet published";
+  return `${timeOnly(launch.window_start)} – ${timeOnly(launch.window_end)} ${tzLabel()}`;
+}
+
+function launchLink(launch) {
+  return `${location.origin}/#launch/${encodeURIComponent(launch.id)}`;
 }
 
 function openDetail(id) {
@@ -503,61 +588,118 @@ function openDetail(id) {
   if (!launch) return;
 
   const image = safeUrl(launch.image_url || launch.thumbnail_url);
-  detailMedia.innerHTML = image ? `<img src="${esc(image)}" alt="">` : "";
+  const credit = launch.image_credit
+    ? `<span class="detail__credit">Image: ${esc(launch.image_credit)}</span>`
+    : "";
+  detailMedia.innerHTML = image
+    ? `<img src="${esc(image)}" alt="${esc(rocketName(launch) || "Launch")}">${credit}`
+    : "";
 
-  const abbrev = statusAbbrev(launch);
+  const pad = launch.pad || {};
+  const code = countryCode(pad.country_code);
   const facts = [
-    ["Liftoff", fullDate(launch.net)],
+    ["Liftoff", isPrecise(launch) ? `${whenText(launch)} ${tzLabel()}` : whenText(launch)],
     ["Window", windowText(launch)],
     ["Rocket", rocketName(launch) || "Unknown"],
-    ["Provider", providerName(launch) || "Unknown"],
+    ["Provider", `${providerName(launch) || "Unknown"}${launch.provider && launch.provider.type ? ` · ${launch.provider.type}` : ""}`],
     ["Mission type", (launch.mission && launch.mission.type) || "Unknown"],
     ["Orbit", (launch.mission && launch.mission.orbit) || "Unknown"],
-    ["Pad", (launch.pad && launch.pad.name) || "Unknown"],
-    ["Location", (launch.pad && launch.pad.location) || "Unknown"],
+    ["Pad", pad.name || "Unknown"],
+    ["Location", `${code ? `${code} · ` : ""}${pad.location || "Unknown"}`],
   ];
+  if (launch.probability != null) facts.push(["Weather", `${launch.probability}% probability of go`]);
 
-  const lat = Number(launch.pad && launch.pad.latitude);
-  const lon = Number(launch.pad && launch.pad.longitude);
-  const hasCoords = Number.isFinite(lat) && Number.isFinite(lon);
+  const lat = Number(pad.latitude);
+  const lon = Number(pad.longitude);
+  const hasCoords = pad.latitude != null && pad.longitude != null && Number.isFinite(lat) && Number.isFinite(lon);
   const video = safeUrl(launch.video_url);
   const info = safeUrl(launch.info_url);
-  const mapUrl = safeUrl(launch.pad && launch.pad.map_url);
+  const mapUrl = safeUrl(pad.map_url);
 
   detailBody.innerHTML = `
     <div class="detail__pills">
-      <span class="pill pill--${statusClass(abbrev)}">${esc(abbrev)}</span>
+      ${statusPill(launch)}
       <span class="pill pill--muted">${esc((launch.status && launch.status.name) || "To Be Determined")}</span>
     </div>
     <h2 class="detail__title" id="detail-title">${esc(missionName(launch))}</h2>
-    <p class="detail__sub">${esc(rocketName(launch) || "")} - ${esc(providerName(launch) || "")}</p>
-    <div class="detail__count" id="detail-count">--</div>
+    <p class="detail__sub">${esc(rocketName(launch) || "")} · ${esc(providerName(launch) || "")}</p>
+    <div class="detail__count"><strong id="detail-count">--</strong><span>${esc((launch.status && launch.status.description) || "")}</span></div>
     <dl class="detail__grid">
       ${facts.map(([key, value]) => `<div><dt>${key}</dt><dd>${esc(value)}</dd></div>`).join("")}
     </dl>
     ${launch.mission && launch.mission.description ? `<h3>Mission</h3><p class="detail__desc">${esc(launch.mission.description)}</p>` : ""}
-    ${hasCoords ? `<h3>Launch site</h3><div class="detail__map"><iframe title="Launch site map" loading="lazy" src="${mapEmbed(lat, lon)}"></iframe></div>` : ""}
+    ${hasCoords ? `<h3>Launch site</h3><div class="detail__map"><iframe title="Map of ${esc(pad.name || "launch site")}" loading="lazy" src="${mapEmbed(lat, lon)}"></iframe></div>` : ""}
     <div class="detail__actions">
-      ${video ? `<a class="btn" href="${esc(video)}" target="_blank" rel="noopener">${launch.webcast_live ? "Watch live" : "Webcast"}</a>` : ""}
+      ${video ? `<a class="btn ${launch.webcast_live ? "btn--live" : "btn--primary"}" href="${esc(video)}" target="_blank" rel="noopener">${launch.webcast_live ? "Watch live" : "Webcast"}</a>` : ""}
       <button type="button" class="btn" data-action="ics">Add to calendar</button>
+      <button type="button" class="btn" data-action="share">Copy link</button>
       ${mapUrl ? `<a class="btn" href="${esc(mapUrl)}" target="_blank" rel="noopener">Open in Maps</a>` : ""}
       ${info ? `<a class="btn" href="${esc(info)}" target="_blank" rel="noopener">Mission info</a>` : ""}
     </div>`;
 
   const icsButton = detailBody.querySelector('[data-action="ics"]');
   if (icsButton) icsButton.addEventListener("click", () => downloadIcs(launch));
+  const shareButton = detailBody.querySelector('[data-action="share"]');
+  if (shareButton) shareButton.addEventListener("click", () => shareLink(launch));
 
   detail.dataset.id = id;
-  if (!detail.open) detail.showModal();
+  if (!detail.open) {
+    detail.showModal();
+    document.body.classList.add("is-locked");
+  }
+  if (location.hash !== `#launch/${encodeURIComponent(id)}`) {
+    history.replaceState(null, "", `#launch/${encodeURIComponent(id)}`);
+  }
   detail.querySelector(".detail__panel").scrollTop = 0;
   tick();
 }
 
 function closeDetail() {
-  if (detail.open) detail.close();
-  delete detail.dataset.id;
-  if (lastTrigger && lastTrigger.isConnected !== false) lastTrigger.focus();
-  lastTrigger = null;
+  if (!detail.open || detail.classList.contains("is-closing")) return;
+  detail.classList.add("is-closing");
+  setTimeout(() => {
+    detail.classList.remove("is-closing");
+    detail.close();
+  }, 220);
+}
+
+async function openDetailById(id) {
+  let launch = launches.find((l) => l.id === id);
+  if (!launch && launches.length) {
+    try {
+      const response = await fetch(`/api/launches/${encodeURIComponent(id)}`);
+      if (response.ok) {
+        launch = await response.json();
+        launches.push(launch);
+        launches.sort((a, b) => new Date(a.net) - new Date(b.net));
+        renderProviders();
+        renderLaunches();
+      }
+    } catch {
+      /* shared link points at a launch we cannot load */
+    }
+  }
+  if (launch) openDetail(launch.id);
+}
+
+function openFromHash() {
+  const match = location.hash.match(/^#launch\/(.+)$/);
+  if (match && launches.length) {
+    const id = decodeURIComponent(match[1]);
+    if (detail.open && detail.dataset.id === id) return;
+    if (launches.some((launch) => launch.id === id)) openDetail(id);
+    else openDetailById(id);
+  }
+}
+
+async function shareLink(launch) {
+  const url = launchLink(launch);
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast("Link copied");
+  } catch {
+    window.prompt("Copy this link", url);
+  }
 }
 
 function icsDate(date) {
@@ -576,6 +718,9 @@ function downloadIcs(launch) {
     launch.window_end && new Date(launch.window_end) > start
       ? new Date(launch.window_end)
       : new Date(start.getTime() + HOUR);
+  const link = launchLink(launch);
+  const where = [launch.pad && launch.pad.name, launch.pad && launch.pad.location].filter(Boolean).join(", ");
+  const description = `${providerName(launch) || ""} · ${statusAbbrev(launch)}\n\n${(launch.mission && launch.mission.description) || ""}\n\n${link}`;
 
   const body = [
     "BEGIN:VCALENDAR",
@@ -587,20 +732,22 @@ function downloadIcs(launch) {
     `DTSTART:${icsDate(start)}`,
     `DTEND:${icsDate(end)}`,
     `SUMMARY:${icsEscape(`Launch: ${missionName(launch)} (${rocketName(launch) || ""})`)}`,
-    `LOCATION:${icsEscape((launch.pad && launch.pad.name) || "")}`,
-    `DESCRIPTION:${icsEscape(`${providerName(launch) || ""}\n\n${(launch.mission && launch.mission.description) || ""}`)}`,
+    `LOCATION:${icsEscape(where)}`,
+    `DESCRIPTION:${icsEscape(description)}`,
+    `URL:${link}`,
     "END:VEVENT",
     "END:VCALENDAR",
   ].join("\r\n");
 
   const blob = new Blob([body], { type: "text/calendar" });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
+  const anchor = document.createElement("a");
+  anchor.href = url;
   const filename = String(launch.slug || "launch").replace(/[^\w.-]+/g, "-");
-  link.download = `${filename}.ics`;
-  link.click();
+  anchor.download = `${filename}.ics`;
+  anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(isPrecise(launch) ? "Calendar event downloaded" : "Heads up: this launch date is not final yet");
 }
 
 function setTz(value) {
@@ -618,7 +765,12 @@ function setTz(value) {
   renderHero();
   renderLaunches();
   renderSync();
-  if (detail.open && detail.dataset.id) openDetail(detail.dataset.id);
+  if (detail.open && detail.dataset.id) {
+    const panel = detail.querySelector(".detail__panel");
+    const scrollTop = panel ? panel.scrollTop : 0;
+    openDetail(detail.dataset.id);
+    if (panel) panel.scrollTop = scrollTop;
+  }
 }
 
 function wire() {
@@ -680,13 +832,43 @@ function wire() {
     openDetail(button.dataset.id);
   });
 
+  list.addEventListener(
+    "pointermove",
+    (event) => {
+      const card = event.target.closest(".card");
+      if (!card) return;
+      const rect = card.getBoundingClientRect();
+      card.style.setProperty("--mx", `${event.clientX - rect.left}px`);
+      card.style.setProperty("--my", `${event.clientY - rect.top}px`);
+    },
+    { passive: true },
+  );
+
   document.querySelector("#detail-close").addEventListener("click", closeDetail);
   detail.addEventListener("click", (event) => {
     if (event.target === detail) closeDetail();
   });
-  detail.addEventListener("close", () => {
-    delete detail.dataset.id;
+  detail.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeDetail();
   });
+  detail.addEventListener("close", () => {
+    document.body.classList.remove("is-locked");
+    delete detail.dataset.id;
+    if (location.hash.startsWith("#launch/")) {
+      history.replaceState(null, "", location.pathname + location.search);
+    }
+    if (lastTrigger && lastTrigger.isConnected !== false) lastTrigger.focus();
+    lastTrigger = null;
+  });
+  window.addEventListener("hashchange", openFromHash);
+
+  const nav = document.querySelector(".nav");
+  if (nav) {
+    const onScroll = () => nav.classList.toggle("is-scrolled", window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  }
 }
 
 async function loadLaunches() {
@@ -707,6 +889,7 @@ async function loadLaunches() {
     renderLaunches();
     renderRadar();
     renderSync();
+    openFromHash();
   } catch (error) {
     list.setAttribute("aria-busy", "false");
     status.textContent = "Feed unreachable";
