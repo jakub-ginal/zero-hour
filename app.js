@@ -20,6 +20,12 @@ const detailBody = document.querySelector("#detail-body");
 const detailMedia = document.querySelector("#detail-media");
 const sync = document.querySelector("#sync");
 const radarBlips = document.querySelector("#radar-blips");
+const clock = document.querySelector("#utc-clock");
+const clockTz = document.querySelector("#clock-tz");
+const stat24h = document.querySelector("#stat-24h");
+const statWeek = document.querySelector("#stat-week");
+const statGo = document.querySelector("#stat-go");
+const toast = document.querySelector("#toast");
 const boot = document.querySelector("#boot");
 const bootLog = document.querySelector("#boot-log");
 const bootProgress = document.querySelector("#boot-progress");
@@ -170,6 +176,10 @@ function renderHero() {
     return;
   }
   const providers = new Set(launches.map((launch) => providerName(launch) || "Unknown"));
+  const windowLabel =
+    nextLaunch.window_start && nextLaunch.window_end
+      ? `${timeOnly(nextLaunch.window_start)} - ${timeOnly(nextLaunch.window_end)}`
+      : "To be confirmed";
 
   heroContent.innerHTML = `
     <p class="hero__eyebrow">Next launch</p>
@@ -181,11 +191,31 @@ function renderHero() {
       <div class="countdown__unit"><strong data-unit="m">00</strong><span>Minutes</span></div>
       <div class="countdown__unit"><strong data-unit="s">00</strong><span>Seconds</span></div>
     </div>
+    <dl class="hero__meta">
+      <div><dt>Provider</dt><dd>${esc(providerName(nextLaunch) || "Unknown")}</dd></div>
+      <div><dt>Pad</dt><dd>${esc(padName(nextLaunch) || "Unknown")}</dd></div>
+      <div><dt>Window</dt><dd>${esc(windowLabel)}</dd></div>
+    </dl>
+    <div class="hero__actions">
+      <button type="button" class="btn btn--primary" id="hero-details">Mission briefing</button>
+      <button type="button" class="btn" id="hero-calendar">Add to calendar</button>
+    </div>
     <div class="hero__stats">
       <div class="hero__stat"><b>${launches.length}</b><span>Tracked</span></div>
       <div class="hero__stat"><b>${providers.size}</b><span>Providers</span></div>
       <div class="hero__stat"><b>${timeOnly(nextLaunch.net)}</b><span>Next lift-off</span></div>
     </div>`;
+
+  const detailsButton = heroContent.querySelector("#hero-details");
+  if (detailsButton) detailsButton.addEventListener("click", () => openDetail(nextLaunch.id));
+
+  const calendarButton = heroContent.querySelector("#hero-calendar");
+  if (calendarButton) {
+    calendarButton.addEventListener("click", () => {
+      downloadIcs(nextLaunch);
+      showToast("Calendar event downloaded");
+    });
+  }
 }
 
 function radarPoint(lat, lon) {
@@ -212,6 +242,14 @@ function renderRadar() {
         `<span class="radar__blip" style="--x:${point.x.toFixed(2)}%;--y:${point.y.toFixed(2)}%;--delay:${(index * 0.17).toFixed(2)}s"></span>`,
     )
     .join("");
+
+  const within = (launch, ms) => {
+    const time = new Date(launch.net).getTime();
+    return time >= Date.now() - 10 * 60 * 1000 && time <= Date.now() + ms;
+  };
+  stat24h.textContent = launches.filter((launch) => within(launch, DAY)).length;
+  statWeek.textContent = launches.filter((launch) => within(launch, 7 * DAY)).length;
+  statGo.textContent = launches.filter((launch) => statusAbbrev(launch) === "GO").length;
 }
 
 function runBoot() {
@@ -243,6 +281,7 @@ function runBoot() {
 
 function tick() {
   const now = Date.now();
+  renderClock();
 
   const box = nextLaunch && document.querySelector("#hero-countdown");
   if (box) {
@@ -264,6 +303,21 @@ function tick() {
     const el = document.querySelector("#detail-count");
     if (launch && el) el.textContent = shortCountdown(new Date(launch.net) - now);
   }
+}
+
+let toastTimer = null;
+
+function showToast(message) {
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add("is-on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("is-on"), 2600);
+}
+
+function renderClock() {
+  clock.textContent = new Date().toLocaleTimeString(undefined, { hour12: false, ...tzOption() });
+  clockTz.textContent = tzLabel();
 }
 
 function renderSync() {
@@ -532,6 +586,7 @@ function setTz(value) {
   for (const button of document.querySelectorAll("[data-tz]")) {
     button.setAttribute("aria-pressed", String(button.dataset.tz === tz));
   }
+  renderClock();
   if (!launches.length) return;
   renderHero();
   renderLaunches();
@@ -541,6 +596,15 @@ function setTz(value) {
 
 function wire() {
   let searchTimer;
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+    const tag = document.activeElement && document.activeElement.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    event.preventDefault();
+    search.focus();
+  });
+
   search.addEventListener("input", (event) => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {

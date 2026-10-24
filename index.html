@@ -25,6 +25,11 @@
       <p>Upcoming orbital rocket launches.</p>
     </div>
     <div class="header__right">
+      <div class="clock" title="Current time">
+        <span class="clock__dot"></span>
+        <span id="utc-clock">--:--:--</span>
+        <span class="clock__tz" id="clock-tz">UTC</span>
+      </div>
       <div class="tz" role="group" aria-label="Time zone">
         <button type="button" data-tz="local" aria-pressed="true">Local</button>
         <button type="button" data-tz="utc" aria-pressed="false">UTC</button>
@@ -47,17 +52,29 @@
           <div class="countdown__unit"><strong data-unit="m">00</strong><span>Minutes</span></div>
           <div class="countdown__unit"><strong data-unit="s">00</strong><span>Seconds</span></div>
         </div>
+        <dl class="hero__meta" id="hero-meta"></dl>
+        <div class="hero__actions">
+          <button type="button" class="btn btn--primary" id="hero-details">Mission briefing</button>
+          <button type="button" class="btn" id="hero-calendar">Add to calendar</button>
+        </div>
         <div class="hero__stats">
           <div class="hero__stat"><b id="stat-count">--</b><span>Tracked</span></div>
           <div class="hero__stat"><b id="stat-providers">--</b><span>Providers</span></div>
           <div class="hero__stat"><b id="stat-window">--</b><span>Next lift-off</span></div>
         </div>
       </div>
-      <div class="radar" aria-hidden="true">
-        <div class="radar__grid"></div>
-        <div class="radar__sweep"></div>
-        <div class="radar__blips" id="radar-blips"></div>
-        <span class="radar__tag">Live traffic</span>
+      <div class="radar-wrap">
+        <div class="radar" aria-hidden="true">
+          <div class="radar__grid"></div>
+          <div class="radar__sweep"></div>
+          <div class="radar__blips" id="radar-blips"></div>
+          <span class="radar__tag">Live traffic</span>
+        </div>
+        <div class="radar__stats">
+          <div><b id="stat-24h">--</b><span>Next 24h</span></div>
+          <div><b id="stat-week">--</b><span>This week</span></div>
+          <div><b id="stat-go">--</b><span>Go</span></div>
+        </div>
       </div>
     </div>
   </section>
@@ -84,6 +101,24 @@
       <p>No launches match those filters.</p>
       <button type="button" class="btn" id="clear-filters">Clear filters</button>
     </div>
+
+    <section class="about" id="about">
+      <div class="about__intro">
+        <p class="eyebrow eyebrow--muted">About</p>
+        <h2>Built for the people who set alarms for liftoff.</h2>
+      </div>
+      <div class="about__text">
+        <p>
+          Zero Hour tracks every scheduled orbital launch worldwide and counts each one down
+          to the second. The schedule refreshes from The Space Devs' Launch Library 2, a
+          community database maintained by people who follow launches closely.
+        </p>
+        <p>
+          Launch times move constantly. <b>Go</b> means the date is confirmed, <b>TBC</b> means
+          it is likely but not confirmed, and <b>TBD</b> means it is a placeholder.
+        </p>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
@@ -99,6 +134,8 @@
       <div class="boot__bar"><span id="boot-progress"></span></div>
     </div>
   </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <dialog class="detail" id="detail" aria-labelledby="detail-title">
     <div class="detail__panel">
