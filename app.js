@@ -26,6 +26,8 @@ const stat24h = document.querySelector("#stat-24h");
 const statWeek = document.querySelector("#stat-week");
 const statGo = document.querySelector("#stat-go");
 const toast = document.querySelector("#toast");
+const errorPanel = document.querySelector("#error");
+const retryButton = document.querySelector("#retry");
 const boot = document.querySelector("#boot");
 const bootLog = document.querySelector("#boot-log");
 const bootProgress = document.querySelector("#boot-progress");
@@ -250,6 +252,31 @@ function renderRadar() {
   stat24h.textContent = launches.filter((launch) => within(launch, DAY)).length;
   statWeek.textContent = launches.filter((launch) => within(launch, 7 * DAY)).length;
   statGo.textContent = launches.filter((launch) => statusAbbrev(launch) === "GO").length;
+}
+
+function wireNav() {
+  const links = [...document.querySelectorAll(".nav__links a")];
+  if (!links.length) return;
+  const sections = links
+    .map((link) => document.querySelector(link.getAttribute("href")))
+    .filter(Boolean);
+  if (!sections.length) return;
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        for (const link of links) {
+          link.classList.toggle(
+            "is-active",
+            link.getAttribute("href") === `#${entry.target.id}`,
+          );
+        }
+      }
+    },
+    { rootMargin: "-45% 0px -50% 0px" },
+  );
+  sections.forEach((section) => observer.observe(section));
 }
 
 function runBoot() {
@@ -644,6 +671,8 @@ function wire() {
     button.addEventListener("click", () => setTz(button.dataset.tz));
   }
 
+  if (retryButton) retryButton.addEventListener("click", loadLaunches);
+
   list.addEventListener("click", (event) => {
     const button = event.target.closest("[data-id]");
     if (!button) return;
@@ -670,6 +699,7 @@ async function loadLaunches() {
     launches = (data.results || []).sort((a, b) => new Date(a.net) - new Date(b.net));
     stale = Boolean(data.stale);
     fetchedAt = data.fetched_at ? new Date(data.fetched_at).getTime() : Date.now();
+    if (errorPanel) errorPanel.hidden = true;
 
     pickNextLaunch();
     renderHero();
@@ -679,10 +709,8 @@ async function loadLaunches() {
     renderSync();
   } catch (error) {
     list.setAttribute("aria-busy", "false");
-    status.innerHTML =
-      'Could not load launches. <button type="button" class="btn btn--inline" id="retry">Retry</button>';
-    const retry = document.querySelector("#retry");
-    if (retry) retry.addEventListener("click", loadLaunches);
+    status.textContent = "Feed unreachable";
+    if (errorPanel) errorPanel.hidden = false;
     sync.textContent = "Offline";
     console.error(error);
   }
@@ -704,6 +732,7 @@ try {
 
 renderSkeletons();
 wire();
+wireNav();
 setTz(tz);
 loadLaunches();
 setInterval(tick, 1000);

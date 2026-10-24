@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Zero Hour - Upcoming Rocket Launches</title>
-  <meta name="description" content="Upcoming orbital rocket launches worldwide.">
+  <meta name="description" content="Live countdowns to every upcoming orbital rocket launch on Earth.">
   <meta name="theme-color" content="#05060b">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,92 +15,131 @@
   >
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <a class="skip" href="#launches">Skip to launches</a>
+<body id="top">
+  <a class="skip" href="#manifest">Skip to launches</a>
   <canvas id="starfield" aria-hidden="true"></canvas>
 
-  <header class="header">
-    <div class="brand">
-      <h1>Zero Hour</h1>
-      <p>Upcoming orbital rocket launches.</p>
-    </div>
-    <div class="header__right">
-      <div class="clock" title="Current time">
-        <span class="clock__dot"></span>
-        <span id="utc-clock">--:--:--</span>
-        <span class="clock__tz" id="clock-tz">UTC</span>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="mark-grad" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0" stop-color="#ff5a1f"/>
+        <stop offset="1" stop-color="#ffc861"/>
+      </linearGradient>
+      <symbol id="mark" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-opacity=".25" stroke-width="2"/>
+        <path d="M24 3a21 21 0 0 1 21 21" fill="none" stroke="url(#mark-grad)" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M24 11c4 3.5 5.5 8.5 5.5 13.5l-2 5h-7l-2-5c0-5 1.5-10 5.5-13.5Z" fill="currentColor"/>
+        <circle cx="24" cy="21" r="2" fill="#05060b"/>
+        <path d="M21.5 31.5h5L24 38Z" fill="url(#mark-grad)"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <header class="nav">
+    <div class="nav__inner">
+      <a class="brand" href="#top" aria-label="Zero Hour home">
+        <svg viewBox="0 0 48 48" class="logo-mark" aria-hidden="true"><use href="#mark"></use></svg>
+        <span class="brand__name">ZERO<span>HOUR</span></span>
+      </a>
+
+      <nav class="nav__links" aria-label="Sections">
+        <a href="#manifest">Manifest</a>
+        <a href="#about">About</a>
+      </nav>
+
+      <div class="nav__right">
+        <div class="clock" title="Current time">
+          <span class="clock__dot"></span>
+          <span id="utc-clock">--:--:--</span>
+          <span class="clock__tz" id="clock-tz">UTC</span>
+        </div>
+        <div class="tz" role="group" aria-label="Time zone">
+          <button type="button" data-tz="local" aria-pressed="true">Local</button>
+          <button type="button" data-tz="utc" aria-pressed="false">UTC</button>
+        </div>
       </div>
-      <div class="tz" role="group" aria-label="Time zone">
-        <button type="button" data-tz="local" aria-pressed="true">Local</button>
-        <button type="button" data-tz="utc" aria-pressed="false">UTC</button>
-      </div>
-      <p id="status" class="status" role="status" aria-live="polite">Loading launches...</p>
     </div>
   </header>
 
-  <section class="hero" id="hero">
-    <canvas id="ascent" class="hero__ascent" aria-hidden="true"></canvas>
-    <div class="hero__planet" aria-hidden="true"></div>
-    <div class="hero__layout">
-      <div class="hero__content" id="hero-content">
-        <p class="hero__eyebrow">Next launch</p>
-        <h2 class="hero__title" id="hero-title">Loading...</h2>
-        <p class="hero__sub" id="hero-sub"></p>
-        <div class="countdown" id="hero-countdown">
-          <div class="countdown__unit"><strong data-unit="d">00</strong><span>Days</span></div>
-          <div class="countdown__unit"><strong data-unit="h">00</strong><span>Hours</span></div>
-          <div class="countdown__unit"><strong data-unit="m">00</strong><span>Minutes</span></div>
-          <div class="countdown__unit"><strong data-unit="s">00</strong><span>Seconds</span></div>
-        </div>
-        <dl class="hero__meta" id="hero-meta"></dl>
-        <div class="hero__actions">
-          <button type="button" class="btn btn--primary" id="hero-details">Mission briefing</button>
-          <button type="button" class="btn" id="hero-calendar">Add to calendar</button>
-        </div>
-        <div class="hero__stats">
-          <div class="hero__stat"><b id="stat-count">--</b><span>Tracked</span></div>
-          <div class="hero__stat"><b id="stat-providers">--</b><span>Providers</span></div>
-          <div class="hero__stat"><b id="stat-window">--</b><span>Next lift-off</span></div>
-        </div>
-      </div>
-      <div class="radar-wrap">
-        <div class="radar" aria-hidden="true">
-          <div class="radar__grid"></div>
-          <div class="radar__sweep"></div>
-          <div class="radar__blips" id="radar-blips"></div>
-          <span class="radar__tag">Live traffic</span>
-        </div>
-        <div class="radar__stats">
-          <div><b id="stat-24h">--</b><span>Next 24h</span></div>
-          <div><b id="stat-week">--</b><span>This week</span></div>
-          <div><b id="stat-go">--</b><span>Go</span></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <main>
-    <div class="toolbar">
-      <input type="search" id="search" class="search" placeholder="Search mission, rocket, provider, pad...">
+    <section class="hero" id="hero" aria-label="Next launch">
+      <canvas id="ascent" class="hero__ascent" aria-hidden="true"></canvas>
+      <div class="hero__planet" aria-hidden="true"></div>
+      <div class="hero__layout">
+        <div class="hero__content" id="hero-content">
+          <p class="hero__eyebrow">Next launch</p>
+          <h2 class="hero__title" id="hero-title">Loading...</h2>
+          <p class="hero__sub" id="hero-sub"></p>
+          <div class="countdown" id="hero-countdown">
+            <div class="countdown__unit"><strong data-unit="d">00</strong><span>Days</span></div>
+            <div class="countdown__unit"><strong data-unit="h">00</strong><span>Hours</span></div>
+            <div class="countdown__unit"><strong data-unit="m">00</strong><span>Minutes</span></div>
+            <div class="countdown__unit"><strong data-unit="s">00</strong><span>Seconds</span></div>
+          </div>
+          <dl class="hero__meta" id="hero-meta"></dl>
+          <div class="hero__actions">
+            <button type="button" class="btn btn--primary" id="hero-details">Mission briefing</button>
+            <button type="button" class="btn" id="hero-calendar">Add to calendar</button>
+          </div>
+          <div class="hero__stats">
+            <div class="hero__stat"><b id="stat-count">--</b><span>Tracked</span></div>
+            <div class="hero__stat"><b id="stat-providers">--</b><span>Providers</span></div>
+            <div class="hero__stat"><b id="stat-window">--</b><span>Next lift-off</span></div>
+          </div>
+        </div>
+        <div class="radar-wrap">
+          <div class="radar" aria-hidden="true">
+            <div class="radar__grid"></div>
+            <div class="radar__sweep"></div>
+            <div class="radar__blips" id="radar-blips"></div>
+            <span class="radar__tag">Live traffic</span>
+          </div>
+          <div class="radar__stats">
+            <div><b id="stat-24h">--</b><span>Next 24h</span></div>
+            <div><b id="stat-week">--</b><span>This week</span></div>
+            <div><b id="stat-go">--</b><span>Go</span></div>
+          </div>
+        </div>
+      </div>
+      <a href="#manifest" class="scroll-cue" aria-label="Scroll to launch manifest"><span></span></a>
+    </section>
 
-      <div class="chips" id="status-chips">
-        <button type="button" class="chip is-active" data-status="all">All</button>
-        <button type="button" class="chip" data-status="Go">Go</button>
-        <button type="button" class="chip" data-status="TBC">TBC</button>
-        <button type="button" class="chip" data-status="TBD">TBD</button>
+    <section class="manifest" id="manifest" aria-labelledby="manifest-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow eyebrow--muted">Launch manifest</p>
+          <h2 id="manifest-title">Every launch on the books.</h2>
+        </div>
+        <p class="section-head__note" id="status" role="status" aria-live="polite">Loading launches...</p>
       </div>
 
-      <select id="provider" class="provider">
-        <option value="">All providers</option>
-      </select>
-    </div>
+      <div class="toolbar">
+        <input type="search" id="search" class="search" placeholder="Search mission, rocket, provider, pad...">
 
-    <div id="launches" class="timeline" aria-busy="true"></div>
+        <div class="chips" id="status-chips">
+          <button type="button" class="chip is-active" data-status="all">All</button>
+          <button type="button" class="chip" data-status="Go">Go</button>
+          <button type="button" class="chip" data-status="TBC">TBC</button>
+          <button type="button" class="chip" data-status="TBD">TBD</button>
+        </div>
 
-    <div class="no-results" id="no-results" role="status" hidden>
-      <p>No launches match those filters.</p>
-      <button type="button" class="btn" id="clear-filters">Clear filters</button>
-    </div>
+        <select id="provider" class="provider">
+          <option value="">All providers</option>
+        </select>
+      </div>
+
+      <div id="launches" class="timeline" aria-busy="true"></div>
+
+      <div class="no-results" id="no-results" role="status" hidden>
+        <p>No launches match those filters.</p>
+        <button type="button" class="btn" id="clear-filters">Clear filters</button>
+      </div>
+
+      <div class="error" id="error" role="alert" hidden>
+        <p><strong>Lost signal.</strong> The launch feed is unreachable right now.</p>
+        <button type="button" class="btn" id="retry">Retry</button>
+      </div>
+    </section>
 
     <section class="about" id="about">
       <div class="about__intro">
@@ -122,12 +161,17 @@
   </main>
 
   <footer class="footer">
+    <div class="brand brand--sm">
+      <svg viewBox="0 0 48 48" class="logo-mark" aria-hidden="true"><use href="#mark"></use></svg>
+      <span class="brand__name">ZERO<span>HOUR</span></span>
+    </div>
     <p>Launch data by <a href="https://thespacedevs.com" target="_blank" rel="noopener">The Space Devs</a> - Launch Library 2</p>
     <p class="sync" id="sync">Awaiting data</p>
   </footer>
 
   <div class="boot" id="boot" aria-hidden="true">
     <div class="boot__inner">
+      <svg viewBox="0 0 48 48" class="logo-mark boot__mark" aria-hidden="true"><use href="#mark"></use></svg>
       <p class="boot__brand">Zero Hour</p>
       <p class="boot__copy">Establishing telemetry uplink</p>
       <ul class="boot__log" id="boot-log"></ul>
