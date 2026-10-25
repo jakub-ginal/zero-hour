@@ -1,11 +1,13 @@
 import { startAscent } from "./ascent.js";
 import { startStarfield } from "./starfield.js";
 
-const API = "/api/launches?limit=24";
+const API = "/api/launches?limit=100";
+const SAVED_KEY = "zh-saved";
 
 const HOUR = 3600 * 1000;
 const DAY = 24 * HOUR;
 const REFRESH_MS = 5 * 60 * 1000;
+const PAGE_SIZE = 24;
 const PRECISE = new Set(["SEC", "MIN", "HR"]);
 
 const list = document.querySelector("#launches");
@@ -16,6 +18,12 @@ const search = document.querySelector("#search");
 const statusChips = document.querySelector("#status-chips");
 const providerSelect = document.querySelector("#provider");
 const noResults = document.querySelector("#no-results");
+const noResultsText = noResults && noResults.querySelector("p");
+const clearFilters = document.querySelector("#clear-filters");
+const loadMoreWrap = document.querySelector("#load-more-wrap");
+const loadMore = document.querySelector("#load-more");
+const savedToggle = document.querySelector("#saved-toggle");
+const savedCount = document.querySelector("#saved-count");
 const detail = document.querySelector("#detail");
 const detailBody = document.querySelector("#detail-body");
 const detailMedia = document.querySelector("#detail-media");
@@ -39,13 +47,76 @@ let fetchedAt = null;
 let stale = false;
 let lastTrigger = null;
 let heroSignature = "";
+let visibleCount = PAGE_SIZE;
 let tz = "local";
-const filters = { q: "", status: "all", provider: "" };
+let saved = readSaved();
+const filters = { q: "", status: "all", provider: "", saved: false };
 
 try {
   tz = localStorage.getItem("zh-tz") === "utc" ? "utc" : "local";
 } catch {
   /* storage unavailable: fall back to local time */
+}
+
+function readSaved() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SAVED_KEY) || "[]");
+    return new Set(Array.isArray(raw) ? raw.filter((id) => typeof id === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function isSaved(id) {
+  return saved.has(id);
+}
+
+function savedLabel(id) {
+  return isSaved(id) ? "Remove from saved" : "Save launch";
+}
+
+function bookmarkIcon() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-3.55L6 21V4.5Z"></path></svg>`;
+}
+
+function persistSaved() {
+  try {
+    localStorage.setItem(SAVED_KEY, JSON.stringify([...saved]));
+  } catch {
+    /* storage unavailable: keep the in-memory watchlist */
+  }
+}
+
+function renderSavedUI() {
+  if (savedCount) savedCount.textContent = String(saved.size);
+  if (savedToggle) {
+    savedToggle.classList.toggle("is-active", filters.saved);
+    savedToggle.setAttribute("aria-pressed", String(filters.saved));
+    savedToggle.title = filters.saved ? "Show all launches" : "Show only saved launches";
+  }
+  for (const button of document.querySelectorAll("[data-save]")) {
+    const on = isSaved(button.dataset.save);
+    const label = on ? "Remove from saved" : "Save launch";
+    button.classList.toggle("is-saved", on);
+    button.setAttribute("aria-pressed", String(on));
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    if (button.classList.contains("btn")) button.textContent = on ? "Saved" : "Save launch";
+  }
+}
+
+function toggleSaved(id) {
+  if (!id) return;
+  if (saved.has(id)) {
+    saved.delete(id);
+    showToast("Removed from saved");
+  } else {
+    saved.add(id);
+    showToast("Saved for later");
+  }
+  persistSaved();
+  renderSavedUI();
+  if (filters.saved) renderLaunches();
 }
 
 const STATUS_CLASS = { GO: "go", TBC: "tbc", TBD: "tbd", HOLD: "hold" };
@@ -430,6 +501,10 @@ function renderSync() {
 }
 
 function matches(launch) {
+  if (filters.saved && !isSaved(launch.id)) {
+    return false;
+  }
+
   if (filters.status !== "all" && statusAbbrev(launch) !== filters.status) {
     return false;
   }
@@ -467,9 +542,10 @@ function card(launch) {
   const time = isPrecise(launch) ? `${timeOnly(launch.net)} ${tzLabel()}` : `NET ${fuzzyDate(launch)}`;
   const pad = launch.pad || {};
   const where = pad.location || pad.name || "";
+  const on = isSaved(launch.id);
 
   return `
-    <button type="button" class="card" data-id="${esc(launch.id)}">
+    <article class="card" data-id="${esc(launch.id)}">
       <div class="card__media">
         ${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ""}
         <div class="card__badges">
@@ -489,7 +565,13 @@ function card(launch) {
           <span class="card__countdown" data-countdown="${esc(launch.id)}">${esc(shortCountdown(launch, Date.now()))}</span>
         </div>
       </div>
-    </button>`;
+      <button type="button" class="card__open" data-open="${esc(launch.id)}">
+        <span class="sr-only">Open mission briefing: ${esc(missionName(launch))}</span>
+      </button>
+      <button type="button" class="card__save${on ? " is-saved" : ""}" data-save="${esc(launch.id)}" aria-pressed="${on}" aria-label="${savedLabel(launch.id)}" title="${savedLabel(launch.id)}">
+        ${bookmarkIcon()}
+      </button>
+    </article>`;
 }
 
 function groupFor(launch, todayKey, tomorrowKey, now) {
@@ -510,12 +592,13 @@ function groupFor(launch, todayKey, tomorrowKey, now) {
 function renderLaunches() {
   const now = Date.now();
   const filtered = launches.filter(matches);
+  const visible = filtered.slice(0, visibleCount);
   const todayKey = dayKey(new Date(now));
   const tomorrowKey = dayKey(new Date(now + DAY));
 
   const groups = [];
   const byKey = new Map();
-  for (const launch of filtered) {
+  for (const launch of visible) {
     const group = groupFor(launch, todayKey, tomorrowKey, now);
     if (!byKey.has(group.key)) {
       byKey.set(group.key, { ...group, items: [] });
@@ -537,9 +620,32 @@ function renderLaunches() {
     )
     .join("");
 
+  const remaining = filtered.length - visible.length;
+  if (loadMoreWrap) loadMoreWrap.hidden = remaining <= 0;
+  if (loadMore && remaining > 0) {
+    loadMore.textContent = `Load ${Math.min(PAGE_SIZE, remaining)} more · ${visible.length} of ${filtered.length} shown`;
+  }
+
   noResults.hidden = filtered.length > 0 || launches.length === 0;
-  status.textContent =
-    filtered.length === launches.length
+  if (!noResults.hidden && noResultsText) {
+    if (filters.saved && saved.size === 0) {
+      noResultsText.textContent =
+        "No saved launches yet. Tap the bookmark on any launch to keep it here.";
+    } else if (filters.saved) {
+      const narrowed = filters.status !== "all" || filters.q || filters.provider;
+      noResultsText.textContent = narrowed
+        ? "No saved launches match those filters."
+        : "Your saved launches are not in the current manifest anymore.";
+    } else {
+      noResultsText.textContent = "No launches match those filters.";
+    }
+    if (clearFilters) {
+      clearFilters.textContent = filters.saved ? "Browse all launches" : "Clear filters";
+    }
+  }
+  status.textContent = filters.saved
+    ? `${filtered.length} saved launch${filtered.length === 1 ? "" : "es"}`
+    : filtered.length === launches.length
       ? `${launches.length} upcoming launches`
       : `${filtered.length} of ${launches.length} launches`;
   list.setAttribute("aria-busy", "false");
@@ -632,6 +738,7 @@ function openDetail(id) {
     <div class="detail__actions">
       ${video ? `<a class="btn ${launch.webcast_live ? "btn--live" : "btn--primary"}" href="${esc(video)}" target="_blank" rel="noopener">${launch.webcast_live ? "Watch live" : "Webcast"}</a>` : ""}
       <button type="button" class="btn" data-action="ics">Add to calendar</button>
+      <button type="button" class="btn${isSaved(launch.id) ? " is-saved" : ""}" data-save="${esc(launch.id)}" aria-pressed="${isSaved(launch.id)}">${isSaved(launch.id) ? "Saved" : "Save launch"}</button>
       <button type="button" class="btn" data-action="share">Copy link</button>
       ${mapUrl ? `<a class="btn" href="${esc(mapUrl)}" target="_blank" rel="noopener">Open in Maps</a>` : ""}
       ${info ? `<a class="btn" href="${esc(info)}" target="_blank" rel="noopener">Mission info</a>` : ""}
@@ -639,6 +746,8 @@ function openDetail(id) {
 
   const icsButton = detailBody.querySelector('[data-action="ics"]');
   if (icsButton) icsButton.addEventListener("click", () => downloadIcs(launch));
+  const saveButton = detailBody.querySelector("[data-save]");
+  if (saveButton) saveButton.addEventListener("click", () => toggleSaved(launch.id));
   const shareButton = detailBody.querySelector('[data-action="share"]');
   if (shareButton) shareButton.addEventListener("click", () => shareLink(launch));
 
@@ -692,14 +801,17 @@ function openFromHash() {
   }
 }
 
-async function shareLink(launch) {
-  const url = launchLink(launch);
+async function copyText(text, message) {
   try {
-    await navigator.clipboard.writeText(url);
-    showToast("Link copied");
+    await navigator.clipboard.writeText(text);
+    showToast(message);
   } catch {
-    window.prompt("Copy this link", url);
+    window.prompt("Copy this link", text);
   }
+}
+
+function shareLink(launch) {
+  copyText(launchLink(launch), "Link copied");
 }
 
 function icsDate(date) {
@@ -739,7 +851,7 @@ function downloadIcs(launch) {
     "END:VCALENDAR",
   ].join("\r\n");
 
-  const blob = new Blob([body], { type: "text/calendar" });
+  const blob = new Blob([body], { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -788,6 +900,7 @@ function wire() {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
       filters.q = event.target.value.trim();
+      visibleCount = PAGE_SIZE;
       renderLaunches();
     }, 150);
   });
@@ -799,25 +912,48 @@ function wire() {
       other.classList.toggle("is-active", other === chip);
     }
     filters.status = chip.dataset.status;
+    visibleCount = PAGE_SIZE;
     renderLaunches();
   });
 
   providerSelect.addEventListener("change", (event) => {
     filters.provider = event.target.value;
+    visibleCount = PAGE_SIZE;
     renderLaunches();
   });
 
-  document.querySelector("#clear-filters").addEventListener("click", () => {
-    filters.q = "";
-    filters.status = "all";
-    filters.provider = "";
-    search.value = "";
-    providerSelect.value = "";
-    for (const chip of statusChips.querySelectorAll(".chip")) {
-      chip.classList.toggle("is-active", chip.dataset.status === "all");
-    }
-    renderLaunches();
-  });
+  if (savedToggle) {
+    savedToggle.addEventListener("click", () => {
+      filters.saved = !filters.saved;
+      visibleCount = PAGE_SIZE;
+      renderSavedUI();
+      renderLaunches();
+    });
+  }
+
+  if (loadMore) {
+    loadMore.addEventListener("click", () => {
+      visibleCount += PAGE_SIZE;
+      renderLaunches();
+    });
+  }
+
+  if (clearFilters) {
+    clearFilters.addEventListener("click", () => {
+      filters.q = "";
+      filters.status = "all";
+      filters.provider = "";
+      filters.saved = false;
+      visibleCount = PAGE_SIZE;
+      search.value = "";
+      providerSelect.value = "";
+      for (const chip of statusChips.querySelectorAll(".chip")) {
+        chip.classList.toggle("is-active", chip.dataset.status === "all");
+      }
+      renderSavedUI();
+      renderLaunches();
+    });
+  }
 
   for (const button of document.querySelectorAll("[data-tz]")) {
     button.addEventListener("click", () => setTz(button.dataset.tz));
@@ -826,10 +962,17 @@ function wire() {
   if (retryButton) retryButton.addEventListener("click", loadLaunches);
 
   list.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-id]");
-    if (!button) return;
-    lastTrigger = button;
-    openDetail(button.dataset.id);
+    const saveButton = event.target.closest("[data-save]");
+    if (saveButton) {
+      event.stopPropagation();
+      toggleSaved(saveButton.dataset.save);
+      return;
+    }
+
+    const openButton = event.target.closest("[data-open]");
+    if (!openButton) return;
+    lastTrigger = openButton;
+    openDetail(openButton.dataset.open);
   });
 
   list.addEventListener(
@@ -916,6 +1059,7 @@ try {
 renderSkeletons();
 wire();
 wireNav();
+renderSavedUI();
 setTz(tz);
 loadLaunches();
 setInterval(tick, 1000);

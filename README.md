@@ -20,10 +20,20 @@ it the service only exposes `/api/*`.
 
 ## API
 
-- `GET /api/launches?limit=24` - upcoming launches
+- `GET /api/launches?limit=100&provider=spacex` - upcoming launches
 - `GET /api/launches/next` - the next launch
 - `GET /api/launches/{id}` - one launch by id or slug
+- `GET /api/launches/{id}/calendar.ics` - one launch as an iCalendar event
+- `GET /api/calendar` - confirmed launches as a subscribable calendar feed
+- `GET /api/calendar.ics` - same feed, kept as an alias
 - `GET /api/health` - cache status
 
 Responses are cached for 10 minutes. If Launch Library 2 fails, the last good data
-keeps being served with `"stale": true`.
+keeps being served with `"stale": true`. JSON responses carry an `ETag` and support
+conditional requests, and responses are gzip-compressed.
+
+The calendar feed only includes launches with a confirmed time or day. Placeholder
+dates such as `NET Q4 2026` are left out until the schedule firms up. Add the feed URL
+inside a calendar app. Browser visits are redirected to a setup page instead of handing
+the calendar file to a system handler; `?download=1` forces a direct download. On the
+page, saved launches and the copied feed URL stay local to the browser.

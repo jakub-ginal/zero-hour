@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calendar feed - Zero Hour</title>
+  <meta name="description" content="Subscribe to upcoming rocket launches in your calendar app.">
+  <meta name="theme-color" content="#05060b">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="feed-page">
+  <canvas id="starfield" aria-hidden="true"></canvas>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="mark-grad" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0" stop-color="#ff5a1f"/>
+        <stop offset="1" stop-color="#ffc861"/>
+      </linearGradient>
+      <symbol id="mark" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-opacity=".25" stroke-width="2"/>
+        <path d="M24 3a21 21 0 0 1 21 21" fill="none" stroke="url(#mark-grad)" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M24 11c4 3.5 5.5 8.5 5.5 13.5l-2 5h-7l-2-5c0-5 1.5-10 5.5-13.5Z" fill="currentColor"/>
+        <circle cx="24" cy="21" r="2" fill="#05060b"/>
+        <path d="M21.5 31.5h5L24 38Z" fill="url(#mark-grad)"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <header class="nav">
+    <div class="nav__inner">
+      <a class="brand" href="/" aria-label="Zero Hour home">
+        <svg viewBox="0 0 48 48" class="logo-mark" aria-hidden="true"><use href="#mark"></use></svg>
+        <span class="brand__name">ZERO<span>HOUR</span></span>
+      </a>
+      <a class="btn btn--sm" href="/">Back to launches</a>
+    </div>
+  </header>
+
+  <main class="feed">
+    <p class="eyebrow">Calendar feed</p>
+    <h1>Take every confirmed launch with you.</h1>
+    <p class="feed__lead">
+      Add the address below in your calendar app's <b>Add calendar from URL</b> or
+      <b>Subscribe</b> option. Confirmed lift-offs appear automatically, and tentative
+      placeholders like <code>NET Q4 2026</code> are left out until the schedule firms up.
+    </p>
+
+    <div class="feed__url">
+      <code id="feed-url">/api/calendar</code>
+      <button type="button" class="btn btn--primary" id="copy-feed">Copy URL</button>
+    </div>
+    <p class="feed__note" id="feed-note" role="status" aria-live="polite">
+      Paste it into your calendar app, not the browser address bar.
+    </p>
+
+    <div class="feed__actions">
+      <a class="btn" href="/api/calendar?download=1" download="zero-hour.ics">Download .ics</a>
+      <a class="btn" href="/#manifest">Browse the manifest</a>
+    </div>
+  </main>
+
+  <script type="module">
+    const url = `${location.origin}/api/calendar`;
+    const field = document.querySelector("#feed-url");
+    const note = document.querySelector("#feed-note");
+
+    field.textContent = url;
+    document.querySelector("#copy-feed").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        note.textContent = "Copied. Paste it into your calendar app's subscription field.";
+      } catch {
+        window.prompt("Copy this URL", url);
+      }
+    });
+
+    import("./starfield.js")
+      .then(({ startStarfield }) => startStarfield(document.querySelector("#starfield")))
+      .catch(() => {
+        /* decorative only */
+      });
+  </script>
+</body>
+</html>

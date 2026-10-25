@@ -110,11 +110,28 @@
           <p class="eyebrow eyebrow--muted">Launch manifest</p>
           <h2 id="manifest-title">Every launch on the books.</h2>
         </div>
-        <p class="section-head__note" id="status" role="status" aria-live="polite">Loading launches...</p>
+        <div class="section-head__meta">
+          <p class="section-head__note" id="status" role="status" aria-live="polite">Loading launches...</p>
+          <a class="btn btn--sm" href="/calendar.html" title="Set up the calendar feed">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect>
+              <path d="M7.5 3v4M16.5 3v4M3.5 9.5h17"></path>
+            </svg>
+            Calendar feed
+          </a>
+        </div>
       </div>
 
       <div class="toolbar">
         <input type="search" id="search" class="search" placeholder="Search mission, rocket, provider, pad...">
+
+        <button type="button" class="chip chip--saved" id="saved-toggle" aria-pressed="false" title="Show only saved launches">
+          <svg class="chip__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-3.55L6 21V4.5Z"></path>
+          </svg>
+          Saved
+          <span class="chip__count" id="saved-count">0</span>
+        </button>
 
         <div class="chips" id="status-chips">
           <button type="button" class="chip is-active" data-status="all">All</button>
@@ -129,6 +146,10 @@
       </div>
 
       <div id="launches" class="timeline" aria-busy="true"></div>
+
+      <div class="load-more" id="load-more-wrap" hidden>
+        <button type="button" class="btn" id="load-more">Load more launches</button>
+      </div>
 
       <div class="no-results" id="no-results" role="status" hidden>
         <p>No launches match those filters.</p>
@@ -156,6 +177,10 @@
           Launch times move constantly. <b>Go</b> means the date is confirmed, <b>TBC</b> means
           it is likely but not confirmed, and <b>TBD</b> means it is a placeholder.
         </p>
+        <p>
+          Use the bookmark on any launch to build a watchlist that stays in your browser, or
+          open the calendar feed page to subscribe to confirmed lift-offs in your calendar app.
+        </p>
       </div>
     </section>
   </main>
@@ -165,7 +190,10 @@
       <svg viewBox="0 0 48 48" class="logo-mark" aria-hidden="true"><use href="#mark"></use></svg>
       <span class="brand__name">ZERO<span>HOUR</span></span>
     </div>
-    <p>Launch data by <a href="https://thespacedevs.com" target="_blank" rel="noopener">The Space Devs</a> - Launch Library 2</p>
+    <p>
+      Launch data by <a href="https://thespacedevs.com" target="_blank" rel="noopener">The Space Devs</a>
+      - Launch Library 2 · <a href="/calendar.html">Calendar feed</a>
+    </p>
     <p class="sync" id="sync">Awaiting data</p>
   </footer>
 
