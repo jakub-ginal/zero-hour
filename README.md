@@ -18,6 +18,10 @@ Then open http://localhost:8000.
 `ZH_SERVE_FRONTEND=true` makes the API process serve the static frontend too; without
 it the service only exposes `/api/*`.
 
+The frontend is an installable PWA with an offline shell and launch caching. Launch
+filters and calendar scopes are reflected in the URL, so filtered views can be
+bookmarked or shared.
+
 ## API
 
 - `GET /api/launches?limit=100&provider=spacex` - upcoming launches
@@ -26,6 +30,7 @@ it the service only exposes `/api/*`.
 - `GET /api/launches/{id}/calendar.ics` - one launch as an iCalendar event
 - `GET /api/calendar` - confirmed launches as a subscribable calendar feed
 - `GET /api/calendar.ics` - same feed, kept as an alias
+- `GET /api/calendar?provider=spacex&status=Go&days=30` - filtered calendar feed
 - `GET /api/health` - cache status
 
 Responses are cached for 10 minutes. If Launch Library 2 fails, the last good data
@@ -33,7 +38,9 @@ keeps being served with `"stale": true`. JSON responses carry an `ETag` and supp
 conditional requests, and responses are gzip-compressed.
 
 The calendar feed only includes launches with a confirmed time or day. Placeholder
-dates such as `NET Q4 2026` are left out until the schedule firms up. Add the feed URL
-inside a calendar app. Browser visits are redirected to a setup page instead of handing
-the calendar file to a system handler; `?download=1` forces a direct download. On the
-page, saved launches and the copied feed URL stay local to the browser.
+dates such as `NET Q4 2026` are left out until the schedule firms up. It can be scoped
+with `provider`, `status`, and `days` (1-365), and the setup page builds those URLs for
+you. Add the feed URL inside a calendar app. Browser visits are redirected to the setup
+page instead of handing the calendar file to a system handler; `?download=1` forces a
+direct download. On the page, saved launches, filter views, and the copied feed URL stay
+local to the browser.
