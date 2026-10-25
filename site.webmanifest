@@ -1,0 +1,61 @@
+{
+  "name": "Zero Hour - Upcoming Rocket Launches",
+  "short_name": "Zero Hour",
+  "description": "Live countdowns, mission briefings, saved launches, and calendar feeds for upcoming orbital launches.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#05060b",
+  "theme_color": "#05060b",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "news",
+    "utilities"
+  ],
+  "shortcuts": [
+    {
+      "name": "Launch manifest",
+      "short_name": "Manifest",
+      "url": "/#manifest",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Calendar feed",
+      "short_name": "Calendar",
+      "url": "/calendar.html",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

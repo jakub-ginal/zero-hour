@@ -7,6 +7,10 @@
   <meta name="description" content="Live countdowns to every upcoming orbital rocket launch on Earth.">
   <meta name="theme-color" content="#05060b">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Zero Hour">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -48,6 +52,12 @@
       </nav>
 
       <div class="nav__right">
+        <button type="button" class="btn btn--sm install" id="install-app" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 19h14"></path>
+          </svg>
+          Install
+        </button>
         <div class="clock" title="Current time">
           <span class="clock__dot"></span>
           <span id="utc-clock">--:--:--</span>
@@ -112,7 +122,7 @@
         </div>
         <div class="section-head__meta">
           <p class="section-head__note" id="status" role="status" aria-live="polite">Loading launches...</p>
-          <a class="btn btn--sm" href="/calendar.html" title="Set up the calendar feed">
+          <a class="btn btn--sm" id="calendar-link" href="/calendar.html" title="Set up the calendar feed">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect>
               <path d="M7.5 3v4M16.5 3v4M3.5 9.5h17"></path>
@@ -140,7 +150,14 @@
           <button type="button" class="chip" data-status="TBD">TBD</button>
         </div>
 
-        <select id="provider" class="provider">
+        <select id="range" class="provider" aria-label="Launch window">
+          <option value="all">Any date</option>
+          <option value="24h">Next 24 hours</option>
+          <option value="7d">Next 7 days</option>
+          <option value="30d">Next 30 days</option>
+        </select>
+
+        <select id="provider" class="provider" aria-label="Launch provider">
           <option value="">All providers</option>
         </select>
       </div>

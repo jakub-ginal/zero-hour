@@ -8,7 +8,10 @@ const HOUR = 3600 * 1000;
 const DAY = 24 * HOUR;
 const REFRESH_MS = 5 * 60 * 1000;
 const PAGE_SIZE = 24;
+const RANGES = { "24h": DAY, "7d": 7 * DAY, "30d": 30 * DAY };
+const isRange = (value) => typeof RANGES[value] === "number";
 const PRECISE = new Set(["SEC", "MIN", "HR"]);
+const VALID_STATUS = new Set(["Go", "TBC", "TBD"]);
 
 const list = document.querySelector("#launches");
 const status = document.querySelector("#status");
@@ -17,6 +20,7 @@ const heroContent = document.querySelector("#hero-content");
 const search = document.querySelector("#search");
 const statusChips = document.querySelector("#status-chips");
 const providerSelect = document.querySelector("#provider");
+const rangeSelect = document.querySelector("#range");
 const noResults = document.querySelector("#no-results");
 const noResultsText = noResults && noResults.querySelector("p");
 const clearFilters = document.querySelector("#clear-filters");
@@ -40,6 +44,8 @@ const retryButton = document.querySelector("#retry");
 const boot = document.querySelector("#boot");
 const bootLog = document.querySelector("#boot-log");
 const bootProgress = document.querySelector("#boot-progress");
+const installButton = document.querySelector("#install-app");
+const calendarLink = document.querySelector("#calendar-link");
 
 let launches = [];
 let nextLaunch = null;
@@ -50,7 +56,8 @@ let heroSignature = "";
 let visibleCount = PAGE_SIZE;
 let tz = "local";
 let saved = readSaved();
-const filters = { q: "", status: "all", provider: "", saved: false };
+let installPrompt = null;
+const filters = readFilters();
 
 try {
   tz = localStorage.getItem("zh-tz") === "utc" ? "utc" : "local";
@@ -65,6 +72,63 @@ function readSaved() {
   } catch {
     return new Set();
   }
+}
+
+function readFilters() {
+  let params;
+  try {
+    params = new URLSearchParams(location.search);
+  } catch {
+    params = new URLSearchParams();
+  }
+  const status = (params.get("status") || "").toLowerCase();
+  const range = params.get("range") || "";
+  return {
+    q: (params.get("q") || "").slice(0, 120),
+    status: [...VALID_STATUS].find((value) => value.toLowerCase() === status) || "all",
+    provider: (params.get("provider") || "").trim().slice(0, 80),
+    saved: params.get("saved") === "1",
+    range: isRange(range) ? range : "all",
+  };
+}
+
+function updateCalendarLink() {
+  if (!calendarLink) return;
+  const params = new URLSearchParams();
+  if (filters.provider) params.set("provider", filters.provider);
+  if (filters.status !== "all") params.set("status", filters.status);
+  if (filters.range !== "all") {
+    params.set("days", filters.range === "24h" ? "1" : filters.range === "7d" ? "7" : "30");
+  }
+  const query = params.toString();
+  calendarLink.href = `/calendar.html${query ? `?${query}` : ""}`;
+}
+
+function syncFiltersToUrl() {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  if (filters.status !== "all") params.set("status", filters.status);
+  if (filters.provider) params.set("provider", filters.provider);
+  if (filters.saved) params.set("saved", "1");
+  if (filters.range !== "all") params.set("range", filters.range);
+  const query = params.toString();
+  const next = `${location.pathname}${query ? `?${query}` : ""}${location.hash}`;
+  const current = `${location.pathname}${location.search}${location.hash}`;
+  if (next !== current) history.replaceState(null, "", next);
+  updateCalendarLink();
+}
+
+function setStatusChip() {
+  for (const chip of statusChips.querySelectorAll(".chip")) {
+    chip.classList.toggle("is-active", chip.dataset.status === filters.status);
+  }
+}
+
+function hydrateFilters() {
+  search.value = filters.q;
+  if (rangeSelect) rangeSelect.value = filters.range;
+  setStatusChip();
+  syncFiltersToUrl();
 }
 
 function isSaved(id) {
@@ -394,6 +458,41 @@ function renderRadar() {
   statGo.textContent = launches.filter((launch) => statusAbbrev(launch) === "GO").length;
 }
 
+function wireInstall() {
+  if (!installButton) return;
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    installPrompt = event;
+    installButton.hidden = false;
+  });
+  installButton.addEventListener("click", async () => {
+    if (!installPrompt) return;
+    const prompt = installPrompt;
+    installPrompt = null;
+    installButton.hidden = true;
+    try {
+      prompt.prompt();
+      await prompt.userChoice;
+    } catch {
+      /* the browser can invalidate a stale install prompt */
+    }
+  });
+  window.addEventListener("appinstalled", () => {
+    installPrompt = null;
+    installButton.hidden = true;
+    showToast("Zero Hour installed");
+  });
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {
+      /* offline support is optional */
+    });
+  });
+}
+
 function wireNav() {
   const links = [...document.querySelectorAll(".nav__links a")];
   if (!links.length) return;
@@ -514,6 +613,14 @@ function matches(launch) {
     return false;
   }
 
+  if (filters.range !== "all") {
+    const time = new Date(launch.net).getTime();
+    const now = Date.now();
+    if (time < now || time > now + RANGES[filters.range]) {
+      return false;
+    }
+  }
+
   if (!filters.q) {
     return true;
   }
@@ -632,7 +739,8 @@ function renderLaunches() {
       noResultsText.textContent =
         "No saved launches yet. Tap the bookmark on any launch to keep it here.";
     } else if (filters.saved) {
-      const narrowed = filters.status !== "all" || filters.q || filters.provider;
+      const narrowed =
+        filters.status !== "all" || filters.q || filters.provider || filters.range !== "all";
       noResultsText.textContent = narrowed
         ? "No saved launches match those filters."
         : "Your saved launches are not in the current manifest anymore.";
@@ -671,7 +779,24 @@ function renderProviders() {
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .map(([name, count]) => `<option value="${esc(name)}">${esc(name)} (${count})</option>`)
       .join("");
-  providerSelect.value = filters.provider;
+  if (filters.provider) {
+    const match = [...providerSelect.options].find(
+      (option) => option.value.toLowerCase() === filters.provider.toLowerCase(),
+    );
+    if (match) {
+      if (match.value !== filters.provider) {
+        filters.provider = match.value;
+        syncFiltersToUrl();
+      }
+      providerSelect.value = match.value;
+    } else {
+      filters.provider = "";
+      providerSelect.value = "";
+      syncFiltersToUrl();
+    }
+  } else {
+    providerSelect.value = "";
+  }
 }
 
 function mapEmbed(lat, lon) {
@@ -757,7 +882,11 @@ function openDetail(id) {
     document.body.classList.add("is-locked");
   }
   if (location.hash !== `#launch/${encodeURIComponent(id)}`) {
-    history.replaceState(null, "", `#launch/${encodeURIComponent(id)}`);
+    history.replaceState(
+      null,
+      "",
+      `${location.pathname}${location.search}#launch/${encodeURIComponent(id)}`,
+    );
   }
   detail.querySelector(".detail__panel").scrollTop = 0;
   tick();
@@ -889,11 +1018,18 @@ function wire() {
   let searchTimer;
 
   document.addEventListener("keydown", (event) => {
-    if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
     const tag = document.activeElement && document.activeElement.tagName;
-    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-    event.preventDefault();
-    search.focus();
+    const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+    if (event.key === "/" && !typing) {
+      event.preventDefault();
+      search.focus();
+      return;
+    }
+    if (event.key.toLowerCase() === "s" && !typing && savedToggle) {
+      event.preventDefault();
+      savedToggle.click();
+    }
   });
 
   search.addEventListener("input", (event) => {
@@ -901,6 +1037,7 @@ function wire() {
     searchTimer = setTimeout(() => {
       filters.q = event.target.value.trim();
       visibleCount = PAGE_SIZE;
+      syncFiltersToUrl();
       renderLaunches();
     }, 150);
   });
@@ -913,19 +1050,31 @@ function wire() {
     }
     filters.status = chip.dataset.status;
     visibleCount = PAGE_SIZE;
+    syncFiltersToUrl();
     renderLaunches();
   });
 
   providerSelect.addEventListener("change", (event) => {
     filters.provider = event.target.value;
     visibleCount = PAGE_SIZE;
+    syncFiltersToUrl();
     renderLaunches();
   });
+
+  if (rangeSelect) {
+    rangeSelect.addEventListener("change", (event) => {
+      filters.range = isRange(event.target.value) ? event.target.value : "all";
+      visibleCount = PAGE_SIZE;
+      syncFiltersToUrl();
+      renderLaunches();
+    });
+  }
 
   if (savedToggle) {
     savedToggle.addEventListener("click", () => {
       filters.saved = !filters.saved;
       visibleCount = PAGE_SIZE;
+      syncFiltersToUrl();
       renderSavedUI();
       renderLaunches();
     });
@@ -944,12 +1093,13 @@ function wire() {
       filters.status = "all";
       filters.provider = "";
       filters.saved = false;
+      filters.range = "all";
       visibleCount = PAGE_SIZE;
       search.value = "";
       providerSelect.value = "";
-      for (const chip of statusChips.querySelectorAll(".chip")) {
-        chip.classList.toggle("is-active", chip.dataset.status === "all");
-      }
+      if (rangeSelect) rangeSelect.value = "all";
+      setStatusChip();
+      syncFiltersToUrl();
       renderSavedUI();
       renderLaunches();
     });
@@ -1057,8 +1207,11 @@ try {
 }
 
 renderSkeletons();
+hydrateFilters();
 wire();
 wireNav();
+wireInstall();
+registerServiceWorker();
 renderSavedUI();
 setTz(tz);
 loadLaunches();

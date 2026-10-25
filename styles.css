@@ -441,6 +441,9 @@ main {
   stroke-width: 1.7;
   stroke-linecap: round;
 }
+#install-app[hidden] {
+  display: none;
+}
 .btn.is-saved {
   border-color: rgba(255, 200, 97, 0.45);
   color: var(--accent-2);
@@ -1422,12 +1425,47 @@ main {
   font-family: var(--font-mono);
   font-size: 0.9em;
 }
+.feed__options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 32px 0 14px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.field select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.feed__summary {
+  min-height: 18px;
+  margin: 0 0 18px;
+  color: var(--accent-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
 .feed__url {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  margin: 34px 0 14px;
+  margin: 0 0 14px;
   padding: 10px 10px 10px 16px;
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -1440,11 +1478,32 @@ main {
   font-size: 13px;
   overflow-wrap: anywhere;
 }
-.feed__note {
-  min-height: 20px;
+.feed__note-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
   margin: 0 0 30px;
+}
+.feed__note {
+  flex: 1;
+  min-height: 20px;
+  margin: 0;
   color: var(--text-3);
   font-size: 13px;
+}
+.linkish {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.linkish:hover {
+  color: var(--text);
 }
 .feed__actions {
   display: flex;
@@ -1543,6 +1602,27 @@ main {
 }
 
 @media (max-width: 720px) {
+  #install-app {
+    width: 38px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+    font-size: 0;
+  }
+  #install-app svg {
+    width: 16px;
+    height: 16px;
+  }
+  .feed {
+    padding: 56px 20px 90px;
+  }
+  .feed__options {
+    grid-template-columns: 1fr;
+  }
+  .feed__note-row {
+    flex-direction: column;
+    gap: 8px;
+  }
   .day {
     grid-template-columns: 1fr;
     gap: 12px;
