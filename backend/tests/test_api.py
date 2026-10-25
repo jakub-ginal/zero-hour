@@ -182,3 +182,48 @@ def test_calendar_feed_alias(api: TestClient) -> None:
 
 def test_health_is_not_cached(api: TestClient) -> None:
     assert api.get("/api/health").headers["cache-control"] == "no-store"
+
+
+def test_calendar_feed_filters_by_provider_and_status(api: TestClient) -> None:
+    spacex = api.get("/api/calendar.ics?provider=spacex&status=Go").text
+    assert "Launch: Starlink Group 15-15" in spacex
+    assert "We're Not Hawking Around" not in spacex
+    assert "IRNSS-1L" not in spacex
+    assert "X-WR-CALNAME:Zero Hour launch manifest · spacex · GO" in spacex
+
+    tbc = api.get("/api/calendar.ics?status=TBC").text
+    assert "We're Not Hawking Around" in tbc
+    assert "Starlink Group 15-15" not in tbc
+    assert "Starlink Group 15-15" in api.get("/api/calendar.ics?status=go").text
+
+    empty = api.get("/api/calendar.ics?provider=not-a-provider").text
+    assert "BEGIN:VEVENT" not in empty
+    assert empty.endswith("END:VCALENDAR\r\n")
+
+
+def test_calendar_feed_scope_survives_browser_redirect(api: TestClient) -> None:
+    resp = api.get(
+        "/api/calendar.ics?provider=SpaceX&status=Go&days=30",
+        headers={"Sec-Fetch-Mode": "navigate"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/calendar.html?provider=SpaceX&status=Go&days=30"
+
+    download = api.get(
+        "/api/calendar.ics?provider=SpaceX&download=1",
+        headers={"Sec-Fetch-Mode": "navigate"},
+        follow_redirects=False,
+    )
+    assert download.status_code == 200
+    assert download.headers["content-type"].startswith("application/octet-stream")
+    assert "Starlink Group 15-15" in download.text
+    assert "We're Not Hawking Around" not in download.text
+
+
+def test_calendar_feed_validates_day_window(api: TestClient) -> None:
+    assert api.get("/api/calendar?days=0").status_code == 422
+    assert api.get("/api/calendar?days=366").status_code == 422
+    assert "X-WR-CALNAME:Zero Hour launch manifest · next 24 hours" in api.get(
+        "/api/calendar?days=1"
+    ).text

@@ -3,7 +3,9 @@ import logging
 import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query, Request, Response
@@ -30,7 +32,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
 
 
-app = FastAPI(title="Zero Hour API", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="Zero Hour API", version="0.3.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -99,16 +101,80 @@ async def list_launches(
     return payload
 
 
+def _calendar_scope(
+    launches: list[Launch],
+    provider: str | None,
+    status: str | None,
+    days: int | None,
+) -> list[Launch]:
+    selected = launches
+    if provider:
+        needle = provider.casefold()
+        selected = [
+            launch
+            for launch in selected
+            if needle in launch.provider.name.casefold()
+            or needle == (launch.provider.abbrev or "").casefold()
+        ]
+    if status:
+        wanted = status.casefold()
+        selected = [
+            launch
+            for launch in selected
+            if launch.status.abbrev.casefold() == wanted or launch.status.name.casefold() == wanted
+        ]
+    if days:
+        now = datetime.now(UTC)
+        cutoff = now + timedelta(days=days)
+        selected = [
+            launch
+            for launch in selected
+            if now
+            <= (launch.net if launch.net.tzinfo else launch.net.replace(tzinfo=UTC))
+            <= cutoff
+        ]
+    return selected
+
+
+def _calendar_name(provider: str | None, status: str | None, days: int | None) -> str:
+    labels = ["Zero Hour launch manifest"]
+    if provider:
+        labels.append(provider)
+    if status:
+        labels.append(status.upper())
+    if days:
+        labels.append("next 24 hours" if days == 1 else f"next {days} days")
+    return " · ".join(labels)
+
+
 @app.get("/api/calendar")
 @app.get("/api/calendar.ics")
-async def calendar_feed(request: Request, download: bool = Query(False)) -> Response:
+async def calendar_feed(
+    request: Request,
+    download: bool = Query(False),
+    provider: str | None = Query(
+        None, max_length=80, description="Case-insensitive provider name filter"
+    ),
+    status: str | None = Query(
+        None, max_length=80, description="Case-insensitive launch status filter"
+    ),
+    days: int | None = Query(
+        None, ge=1, le=365, description="Only include launches in the next N days"
+    ),
+) -> Response:
     # A browser address bar must never receive the calendar document: some browsers hand
     # text/calendar to a system handler, which then chases the event URLs and opens tabs.
     navigation = request.headers.get("sec-fetch-mode") == "navigate"
     wants_html = "text/html" in request.headers.get("accept", "")
     if (navigation or wants_html) and not download:
+        params = {
+            key: value
+            for key, value in {"provider": provider, "status": status, "days": days}.items()
+            if value is not None
+        }
+        location = "/calendar.html" + (f"?{urlencode(params)}" if params else "")
         return RedirectResponse(
-            "/calendar.html",
+            location,
             status_code=303,
             headers={
                 "Cache-Control": "no-store",
@@ -117,7 +183,12 @@ async def calendar_feed(request: Request, download: bool = Query(False)) -> Resp
         )
 
     launches = await _launches(request)
-    body = build_calendar(launches, base_url=str(request.base_url).rstrip("/"))
+    selected = _calendar_scope(launches, provider, status, days)
+    body = build_calendar(
+        selected,
+        base_url=str(request.base_url).rstrip("/"),
+        name=_calendar_name(provider, status, days),
+    )
     # Explicit downloads use a generic type so a broken text/calendar handler in the
     # browser cannot reopen the file with the browser itself and spawn tabs forever.
     return Response(
