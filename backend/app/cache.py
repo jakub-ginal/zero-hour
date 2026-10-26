@@ -65,7 +65,7 @@ class LaunchCache:
             return self._launches
 
     async def _refresh(self) -> None:
-        headers = {"Accept": "application/json", "User-Agent": "ZeroHour/0.3"}
+        headers = {"Accept": "application/json", "User-Agent": "ZeroHour/0.4"}
         if self._settings.ll2_api_token:
             headers["Authorization"] = f"Token {self._settings.ll2_api_token}"
         resp = await self._client.get(
