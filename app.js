@@ -863,6 +863,7 @@ function openDetail(id) {
     ${launch.mission && launch.mission.description ? `<h3>Mission</h3><p class="detail__desc">${esc(launch.mission.description)}</p>` : ""}
     ${hasCoords ? `<h3>Launch site</h3><div class="detail__map"><iframe title="Map of ${esc(pad.name || "launch site")}" loading="lazy" src="${mapEmbed(lat, lon)}"></iframe></div>` : ""}
     <div class="detail__actions">
+      <a class="btn btn--primary" href="/launch.html?id=${encodeURIComponent(launch.id)}">Full briefing</a>
       ${video ? `<a class="btn ${launch.webcast_live ? "btn--live" : "btn--primary"}" href="${esc(video)}" target="_blank" rel="noopener">${launch.webcast_live ? "Watch live" : "Webcast"}</a>` : ""}
       <button type="button" class="btn" data-action="ics">Add to calendar</button>
       <button type="button" class="btn${isSaved(launch.id) ? " is-saved" : ""}" data-save="${esc(launch.id)}" aria-pressed="${isSaved(launch.id)}">${isSaved(launch.id) ? "Saved" : "Save launch"}</button>

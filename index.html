@@ -48,6 +48,7 @@
 
       <nav class="nav__links" aria-label="Sections">
         <a href="#manifest">Manifest</a>
+        <a href="/mission-control.html">Mission control</a>
         <a href="#about">About</a>
       </nav>
 
@@ -122,6 +123,15 @@
         </div>
         <div class="section-head__meta">
           <p class="section-head__note" id="status" role="status" aria-live="polite">Loading launches...</p>
+          <a class="btn btn--sm" href="/mission-control.html" title="Open mission control">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3.5" y="3.5" width="7" height="7" rx="1.2"></rect>
+              <rect x="13.5" y="3.5" width="7" height="7" rx="1.2"></rect>
+              <rect x="3.5" y="13.5" width="7" height="7" rx="1.2"></rect>
+              <rect x="13.5" y="13.5" width="7" height="7" rx="1.2"></rect>
+            </svg>
+            Mission control
+          </a>
           <a class="btn btn--sm" id="calendar-link" href="/calendar.html" title="Set up the calendar feed">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect>
@@ -195,8 +205,10 @@
           it is likely but not confirmed, and <b>TBD</b> means it is a placeholder.
         </p>
         <p>
-          Use the bookmark on any launch to build a watchlist that stays in your browser, or
-          open the calendar feed page to subscribe to confirmed lift-offs in your calendar app.
+          Use the bookmark on any launch to build a watchlist that stays in your browser, open a
+          full launch briefing for the complete mission file, or subscribe to confirmed lift-offs
+          from the calendar feed page. Mission control turns the manifest into cadence, provider,
+          status, and month-at-a-glance views.
         </p>
       </div>
     </section>
@@ -209,7 +221,7 @@
     </div>
     <p>
       Launch data by <a href="https://thespacedevs.com" target="_blank" rel="noopener">The Space Devs</a>
-      - Launch Library 2 · <a href="/calendar.html">Calendar feed</a>
+      - Launch Library 2 · <a href="/mission-control.html">Mission control</a> · <a href="/calendar.html">Calendar feed</a>
     </p>
     <p class="sync" id="sync">Awaiting data</p>
   </footer>

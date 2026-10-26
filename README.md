@@ -1,6 +1,6 @@
 # Zero Hour
 
-A small page that lists upcoming rocket launches.
+A launch tracker for upcoming rocket launches, with countdowns, mission control, briefings, and calendar feeds.
 
 Launch data comes from [Launch Library 2](https://thespacedevs.com/llapi) through a
 small FastAPI service that caches the upstream response so the free tier lasts longer.
@@ -21,6 +21,17 @@ it the service only exposes `/api/*`.
 The frontend is an installable PWA with an offline shell and launch caching. Launch
 filters and calendar scopes are reflected in the URL, so filtered views can be
 bookmarked or shared.
+
+## Mission control and briefings
+
+- `/mission-control.html` summarizes launch cadence, provider share, status mix,
+  the next dated lift-offs, and the month ahead.
+- `/launch.html?id=...` is a permanent launch briefing with a live countdown, the
+  full mission file, pad details, links, save controls, and an iCalendar download.
+- Watchlists stay in browser storage under `zh-saved`. Mission control can export
+  them as JSON and merge an exported watchlist back in on any browser.
+- Both new pages are part of the offline shell. Install support is available in
+  Chromium browsers; Firefox desktop does not offer PWA installation.
 
 ## API
 

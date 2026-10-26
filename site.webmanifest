@@ -1,7 +1,7 @@
 {
   "name": "Zero Hour - Upcoming Rocket Launches",
   "short_name": "Zero Hour",
-  "description": "Live countdowns, mission briefings, saved launches, and calendar feeds for upcoming orbital launches.",
+  "description": "Live countdowns, mission control, launch briefings, saved launches, and calendar feeds for upcoming orbital launches.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
@@ -39,6 +39,17 @@
       "name": "Launch manifest",
       "short_name": "Manifest",
       "url": "/#manifest",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Mission control",
+      "short_name": "Control",
+      "url": "/mission-control.html",
       "icons": [
         {
           "src": "/icon-192.png",

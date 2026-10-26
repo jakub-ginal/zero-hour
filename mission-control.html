@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mission control - Zero Hour</title>
+  <meta name="description" content="Track launch cadence, providers, status, watchlists, and the month ahead.">
+  <meta name="theme-color" content="#05060b">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Zero Hour">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="control-page">
+  <a class="skip" href="#control-main">Skip to mission control</a>
+  <canvas id="starfield" aria-hidden="true"></canvas>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="mark-grad" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0" stop-color="#ff5a1f"/>
+        <stop offset="1" stop-color="#ffc861"/>
+      </linearGradient>
+      <symbol id="mark" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-opacity=".25" stroke-width="2"/>
+        <path d="M24 3a21 21 0 0 1 21 21" fill="none" stroke="url(#mark-grad)" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M24 11c4 3.5 5.5 8.5 5.5 13.5l-2 5h-7l-2-5c0-5 1.5-10 5.5-13.5Z" fill="currentColor"/>
+        <circle cx="24" cy="21" r="2" fill="#05060b"/>
+        <path d="M21.5 31.5h5L24 38Z" fill="url(#mark-grad)"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <header class="nav">
+    <div class="nav__inner">
+      <a class="brand" href="/" aria-label="Zero Hour home">
+        <svg viewBox="0 0 48 48" class="logo-mark" aria-hidden="true"><use href="#mark"></use></svg>
+        <span class="brand__name">ZERO<span>HOUR</span></span>
+      </a>
+
+      <nav class="nav__links" aria-label="Sections">
+        <a href="/">Manifest</a>
+        <a href="/mission-control.html" class="is-active" aria-current="page">Mission control</a>
+        <a href="/calendar.html">Calendar feed</a>
+      </nav>
+
+      <div class="nav__right">
+        <div class="tz" role="group" aria-label="Time zone">
+          <button type="button" data-tz="local" aria-pressed="true">Local</button>
+          <button type="button" data-tz="utc" aria-pressed="false">UTC</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="control" id="control-main">
+    <section class="control__hero" aria-labelledby="control-title">
+      <p class="eyebrow">Mission control</p>
+      <h1 id="control-title">See the shape of the schedule.</h1>
+      <p class="control__lead">
+        Cadence, providers, status, and the month ahead. Built from the same live manifest,
+        with your local watchlist kept alongside it.
+      </p>
+      <div class="control__stats" aria-label="Launch statistics">
+        <div><strong id="stat-tracked">--</strong><span>Tracked</span></div>
+        <div><strong id="stat-week">--</strong><span>Next 7 days</span></div>
+        <div><strong id="stat-go">--</strong><span>Go</span></div>
+        <div><strong id="stat-providers">--</strong><span>Providers</span></div>
+      </div>
+    </section>
+
+    <section class="panel cadence-panel" aria-labelledby="cadence-title">
+      <header class="panel__head">
+        <div>
+          <h2 id="cadence-title">Launch cadence</h2>
+          <p>Launches with a date, across the next eight weeks.</p>
+        </div>
+        <span class="panel__meta" id="cadence-total">--</span>
+      </header>
+      <div class="cadence" id="cadence" aria-live="polite"></div>
+    </section>
+
+    <div class="control__grid">
+      <section class="panel" aria-labelledby="providers-title">
+        <header class="panel__head">
+          <div>
+            <h2 id="providers-title">Providers</h2>
+            <p>Who is flying the most.</p>
+          </div>
+        </header>
+        <div class="ranking" id="providers"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="status-title">
+        <header class="panel__head">
+          <div>
+            <h2 id="status-title">Status mix</h2>
+            <p>Current manifest readiness.</p>
+          </div>
+        </header>
+        <div class="status-mix" id="status-mix"></div>
+      </section>
+
+      <section class="panel next-panel" aria-labelledby="next-title">
+        <header class="panel__head">
+          <div>
+            <h2 id="next-title">Next up</h2>
+            <p>The next dates on the schedule.</p>
+          </div>
+          <a class="panel__link" href="/#manifest">Manifest</a>
+        </header>
+        <div class="next-list" id="next-up" aria-live="polite"></div>
+      </section>
+
+      <section class="panel watchlist-panel" aria-labelledby="watchlist-title">
+        <header class="panel__head">
+          <div>
+            <h2 id="watchlist-title">Watchlist</h2>
+            <p>Saved locally in this browser.</p>
+          </div>
+          <span class="panel__meta" id="watchlist-count">0</span>
+        </header>
+        <div class="watchlist" id="watchlist" aria-live="polite"></div>
+        <div class="watchlist__actions">
+          <button type="button" class="btn btn--sm" id="watchlist-export">Export JSON</button>
+          <button type="button" class="btn btn--sm" id="watchlist-import-button">Import JSON</button>
+          <button type="button" class="linkish" id="watchlist-clear">Clear</button>
+          <input type="file" id="watchlist-import" accept="application/json,.json" hidden>
+        </div>
+        <p class="watchlist__status" id="watchlist-status" role="status" aria-live="polite"></p>
+      </section>
+    </div>
+
+    <section class="panel calendar-panel" aria-labelledby="month-title">
+      <header class="panel__head calendar-panel__head">
+        <div>
+          <h2 id="month-title">Launch calendar</h2>
+          <p>Dated launches, in your selected time zone.</p>
+        </div>
+        <div class="month-nav">
+          <button type="button" class="icon-btn" id="month-prev" aria-label="Previous month">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+          </button>
+          <button type="button" class="btn btn--sm" id="month-today">Today</button>
+          <button type="button" class="icon-btn" id="month-next" aria-label="Next month">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+          </button>
+        </div>
+      </header>
+      <div class="month-label" id="month-label" aria-live="polite"></div>
+      <div class="cal-weekdays" id="cal-weekdays" aria-hidden="true"></div>
+      <div class="cal-grid" id="month-grid"></div>
+      <div class="control__error" id="control-error" hidden>
+        <p>The manifest could not be loaded.</p>
+        <button type="button" class="btn" id="control-retry">Retry</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="brand brand--sm">
+      <svg viewBox="0 0 48 48" class="logo-mark" aria-hidden="true"><use href="#mark"></use></svg>
+      <span class="brand__name">ZERO<span>HOUR</span></span>
+    </div>
+    <p>
+      Launch data by <a href="https://thespacedevs.com" target="_blank" rel="noopener">The Space Devs</a>
+      - Launch Library 2 · <a href="/">Manifest</a> · <a href="/calendar.html">Calendar feed</a>
+    </p>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="mission-control.js"></script>
+</body>
+</html>
