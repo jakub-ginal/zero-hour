@@ -28,6 +28,8 @@ bookmarked or shared.
   the next dated lift-offs, and the month ahead.
 - `/launch.html?id=...` is a permanent launch briefing with a live countdown, the
   full mission file, pad details, links, save controls, and an iCalendar download.
+  Previous/next controls and the arrow keys move through the manifest.
+- Calendar downloads can include a 15-minute, 1-hour, or 1-day reminder.
 - Watchlists stay in browser storage under `zh-saved`. Mission control can export
   them as JSON and merge an exported watchlist back in on any browser.
 - Both new pages are part of the offline shell. Install support is available in
@@ -39,6 +41,7 @@ bookmarked or shared.
 - `GET /api/launches/next` - the next launch
 - `GET /api/launches/{id}` - one launch by id or slug
 - `GET /api/launches/{id}/calendar.ics` - one launch as an iCalendar event
+- `GET /api/launches/{id}/calendar.ics?remind=60` - include a reminder 60 minutes before
 - `GET /api/calendar` - confirmed launches as a subscribable calendar feed
 - `GET /api/calendar.ics` - same feed, kept as an alias
 - `GET /api/calendar?provider=spacex&status=Go&days=30` - filtered calendar feed
