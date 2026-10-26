@@ -78,7 +78,7 @@ def _description(launch: Launch, url: str) -> str:
     return "\n\n".join(parts)
 
 
-def _event(launch: Launch, base_url: str) -> list[str]:
+def _event(launch: Launch, base_url: str, remind_minutes: int | None = None) -> list[str]:
     url = f"{base_url}/#launch/{launch.id}"
     start = _as_utc(launch.net)
     lines = [
@@ -110,6 +110,16 @@ def _event(launch: Launch, base_url: str) -> list[str]:
     )
     if location:
         lines.append(f"LOCATION:{_escape(location)}")
+    if remind_minutes:
+        lines.extend(
+            [
+                "BEGIN:VALARM",
+                f"TRIGGER:-PT{remind_minutes}M",
+                "ACTION:DISPLAY",
+                f"DESCRIPTION:{_escape(_mission_title(launch))}",
+                "END:VALARM",
+            ]
+        )
     lines.append("END:VEVENT")
     return lines
 
@@ -120,6 +130,7 @@ def build_calendar(
     base_url: str,
     name: str = "Zero Hour launch manifest",
     include_tentative: bool = False,
+    remind_minutes: int | None = None,
 ) -> str:
     selected = [launch for launch in launches if include_tentative or calendar_ready(launch)]
     selected.sort(key=lambda launch: launch.net)
@@ -134,6 +145,6 @@ def build_calendar(
         "X-WR-TIMEZONE:UTC",
     ]
     for launch in selected:
-        lines.extend(_event(launch, base_url))
+        lines.extend(_event(launch, base_url, remind_minutes))
     lines.append("END:VCALENDAR")
     return CRLF.join(_fold(line) for line in lines) + CRLF

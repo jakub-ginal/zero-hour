@@ -2441,6 +2441,46 @@ a.legend__row:hover {
   stroke-width: 1.7;
   stroke-linejoin: round;
 }
+.briefing__reminder {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-2);
+  transition: border-color 0.2s, background 0.2s;
+}
+.briefing__reminder:hover,
+.briefing__reminder:focus-within {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.05);
+}
+.briefing__reminder svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.briefing__reminder select {
+  max-width: 142px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.briefing__reminder select:focus-visible {
+  outline: 0;
+}
 .briefing__hint {
   margin: 12px 0 0;
   color: var(--text-3);
@@ -2611,6 +2651,83 @@ a.legend__row:hover {
   flex-direction: column;
   gap: 8px;
 }
+.briefing__pager {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  margin-top: 36px;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+}
+.briefing__pager-link {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(14, 17, 28, 0.58);
+  text-decoration: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.briefing__pager-link:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.05);
+}
+.briefing__pager-link--next {
+  align-items: flex-end;
+  text-align: right;
+}
+.briefing__pager-label {
+  color: var(--text-3);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.briefing__pager-link strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.briefing__pager-link small {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.briefing__pager-count {
+  display: flex;
+  align-self: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.briefing__pager-count > span {
+  color: var(--text-3);
+}
+.briefing__pager-count small {
+  color: var(--text-3);
+  font-family: var(--font-sans);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
 .briefing__links .btn {
   justify-content: flex-start;
   text-align: left;
@@ -2765,6 +2882,49 @@ a.legend__row:hover {
   }
   .briefing__actions .btn {
     font-size: 13px;
+  }
+  .briefing__reminder {
+    min-height: 37px;
+  }
+  .briefing__reminder select {
+    max-width: 124px;
+    font-size: 12px;
+  }
+  .briefing__pager {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    margin-top: 28px;
+    padding-top: 20px;
+  }
+  .briefing__pager-spacer {
+    display: none;
+  }
+  .briefing__pager-count {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    flex-direction: row;
+    justify-content: center;
+    gap: 5px;
+  }
+  .briefing__pager-count small {
+    display: none;
+  }
+  .briefing__pager-link {
+    padding: 11px 12px;
+  }
+  .briefing__pager-link--prev {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .briefing__pager-link--next {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .briefing__pager-link strong {
+    font-size: 14px;
+  }
+  .briefing__pager-link small {
+    display: none;
   }
 }
 .legend__dot--hold {

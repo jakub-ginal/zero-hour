@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
 
 
-app = FastAPI(title="Zero Hour API", version="0.4.0", lifespan=lifespan)
+app = FastAPI(title="Zero Hour API", version="0.5.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -212,7 +212,13 @@ async def next_launch(request: Request) -> Launch:
 
 
 @app.get("/api/launches/{launch_id}/calendar.ics")
-async def launch_calendar(launch_id: str, request: Request) -> Response:
+async def launch_calendar(
+    launch_id: str,
+    request: Request,
+    remind: int | None = Query(
+        None, ge=1, le=10080, description="Minutes before lift-off to add a reminder"
+    ),
+) -> Response:
     launch = await _find_launch(request, launch_id)
     if launch is None:
         raise HTTPException(404, "Launch not found")
@@ -221,6 +227,7 @@ async def launch_calendar(launch_id: str, request: Request) -> Response:
         base_url=str(request.base_url).rstrip("/"),
         name=f"{launch.name} · Zero Hour",
         include_tentative=True,
+        remind_minutes=remind,
     )
     filename = re.sub(r"[^A-Za-z0-9._-]+", "-", launch.slug or launch.id).strip("-") or "launch"
     return Response(
