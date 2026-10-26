@@ -84,7 +84,7 @@ export function startAscent(canvas, hero) {
   function drawPadFlash(pos, now) {
     if (!flight) return;
     const since = (now - flight.t0) / 1000;
-    const flash = Math.max(0, 1 - since / 0.9);
+    const flash = Math.min(1, Math.max(0, 1 - since / 0.9));
     if (flash <= 0) return;
     const radius = 40 + (1 - flash) * 130;
     const g = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius);

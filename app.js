@@ -55,7 +55,7 @@ let lastTrigger = null;
 let heroSignature = "";
 let visibleCount = PAGE_SIZE;
 let tz = "local";
-let saved = readSaved();
+const saved = readSaved();
 let installPrompt = null;
 const filters = readFilters();
 
@@ -455,7 +455,7 @@ function renderRadar() {
   };
   stat24h.textContent = launches.filter((launch) => within(launch, DAY)).length;
   statWeek.textContent = launches.filter((launch) => within(launch, 7 * DAY)).length;
-  statGo.textContent = launches.filter((launch) => statusAbbrev(launch) === "GO").length;
+  statGo.textContent = launches.filter((launch) => statusAbbrev(launch).toUpperCase() === "GO").length;
 }
 
 function wireInstall() {
@@ -494,7 +494,9 @@ function registerServiceWorker() {
 }
 
 function wireNav() {
-  const links = [...document.querySelectorAll(".nav__links a")];
+  const links = [...document.querySelectorAll(".nav__links a")].filter((link) =>
+    (link.getAttribute("href") || "").startsWith("#"),
+  );
   if (!links.length) return;
   const sections = links
     .map((link) => document.querySelector(link.getAttribute("href")))
