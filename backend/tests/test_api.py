@@ -147,6 +147,18 @@ def test_calendar_for_one_launch(api: TestClient) -> None:
     assert api.get("/api/launches/nope/calendar.ics").status_code == 404
 
 
+def test_calendar_for_one_launch_with_reminder(api: TestClient) -> None:
+    nxt = api.get("/api/launches/next").json()
+    resp = api.get(f"/api/launches/{nxt['id']}/calendar.ics?remind=60")
+    assert resp.status_code == 200
+    assert "BEGIN:VALARM" in resp.text
+    assert "TRIGGER:-PT60M" in resp.text
+    assert "ACTION:DISPLAY" in resp.text
+    assert resp.text.count("BEGIN:VALARM") == 1
+    assert api.get(f"/api/launches/{nxt['id']}/calendar.ics?remind=0").status_code == 422
+    assert api.get(f"/api/launches/{nxt['id']}/calendar.ics?remind=10081").status_code == 422
+
+
 def test_calendar_feed_sends_browsers_to_setup_page(api: TestClient) -> None:
     resp = api.get(
         "/api/calendar.ics", headers={"Sec-Fetch-Mode": "navigate"}, follow_redirects=False
