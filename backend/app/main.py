@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
 
 
-app = FastAPI(title="Zero Hour API", version="0.5.0", lifespan=lifespan)
+app = FastAPI(title="Zero Hour API", version="0.6.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -199,6 +199,49 @@ async def calendar_feed(
             "Content-Disposition": 'attachment; filename="zero-hour.ics"',
             "X-Content-Type-Options": "nosniff",
             "Vary": "Accept, Sec-Fetch-Mode",
+        },
+    )
+
+
+@app.get("/api/watchlist.ics")
+async def watchlist_calendar(
+    request: Request,
+    ids: str = Query(..., max_length=4000, description="Comma-separated launch ids or slugs"),
+    remind: int | None = Query(
+        None, ge=1, le=10080, description="Minutes before lift-off to add a reminder"
+    ),
+) -> Response:
+    wanted = list(dict.fromkeys(value.strip() for value in ids.split(",") if value.strip()))[:100]
+    if not wanted:
+        raise HTTPException(400, "No launch ids were provided")
+
+    launches = await _launches(request)
+    by_id: dict[str, Launch] = {}
+    for launch in launches:
+        by_id[launch.id] = launch
+        if launch.slug:
+            by_id[launch.slug] = launch
+    selected: list[Launch] = []
+    seen: set[str] = set()
+    for value in wanted:
+        launch = by_id.get(value)
+        if launch is None or launch.id in seen:
+            continue
+        selected.append(launch)
+        seen.add(launch.id)
+    body = build_calendar(
+        selected,
+        base_url=str(request.base_url).rstrip("/"),
+        name="Zero Hour watchlist",
+        remind_minutes=remind,
+    )
+    return Response(
+        body,
+        media_type="text/calendar",
+        headers={
+            "Cache-Control": "public, max-age=300",
+            "Content-Disposition": 'attachment; filename="zero-hour-watchlist.ics"',
+            "X-Content-Type-Options": "nosniff",
         },
     )
 

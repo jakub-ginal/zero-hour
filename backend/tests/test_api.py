@@ -159,6 +159,35 @@ def test_calendar_for_one_launch_with_reminder(api: TestClient) -> None:
     assert api.get(f"/api/launches/{nxt['id']}/calendar.ics?remind=10081").status_code == 422
 
 
+def test_watchlist_calendar(api: TestClient) -> None:
+    launches = api.get("/api/launches?limit=4").json()["results"]
+    ids = ",".join(launch["id"] for launch in launches[:3])
+    resp = api.get(f"/api/watchlist.ics?ids={ids}&remind=60")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/calendar")
+    assert 'filename="zero-hour-watchlist.ics"' in resp.headers["content-disposition"]
+    body = resp.text
+    assert "X-WR-CALNAME:Zero Hour watchlist" in body
+    assert body.count("BEGIN:VEVENT") == 3
+    assert body.count("BEGIN:VALARM") == 3
+    assert "TRIGGER:-PT60M" in body
+    for launch in launches[:3]:
+        assert f"UID:{launch['id']}@zerohour" in body
+    assert api.get(f"/api/watchlist.ics?ids={ids}&remind=0").status_code == 422
+    assert api.get(f"/api/watchlist.ics?ids={ids}&remind=10081").status_code == 422
+
+
+def test_watchlist_calendar_handles_slugs_duplicates_and_unknowns(api: TestClient) -> None:
+    first = api.get("/api/launches?limit=1").json()["results"][0]
+    ids = f"{first['id']},{first['slug']},missing"
+    body = api.get(f"/api/watchlist.ics?ids={ids}").text
+    assert body.count("BEGIN:VEVENT") == 1
+    assert api.get("/api/watchlist.ics?ids=").status_code == 400
+    empty = api.get("/api/watchlist.ics?ids=missing")
+    assert empty.status_code == 200
+    assert "BEGIN:VEVENT" not in empty.text
+
+
 def test_calendar_feed_sends_browsers_to_setup_page(api: TestClient) -> None:
     resp = api.get(
         "/api/calendar.ics", headers={"Sec-Fetch-Mode": "navigate"}, follow_redirects=False
