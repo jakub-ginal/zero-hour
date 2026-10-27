@@ -44,7 +44,9 @@
         <svg viewBox="0 0 48 48" class="logo-mark" aria-hidden="true"><use href="#mark"></use></svg>
         <span class="brand__name">ZERO<span>HOUR</span></span>
       </a>
-      <a class="btn btn--sm" href="/">Back to launches</a>
+      <div class="nav__right">
+        <a class="btn btn--sm" href="/">Back to launches</a>
+      </div>
     </div>
   </header>
 
@@ -114,6 +116,8 @@
   </main>
 
   <script type="module">
+    import { initFinder } from "./finder.js";
+
     const providerSelect = document.querySelector("#feed-provider");
     const statusSelect = document.querySelector("#feed-status");
     const windowSelect = document.querySelector("#feed-window");
@@ -304,6 +308,8 @@
       .catch(() => {
         /* decorative only */
       });
+
+    initFinder();
 
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

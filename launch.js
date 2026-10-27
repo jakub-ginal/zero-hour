@@ -1,3 +1,4 @@
+import { initFinder } from "./finder.js";
 import {
   countdownParts,
   esc,
@@ -437,6 +438,7 @@ window.addEventListener("keydown", (event) => {
 });
 
 wireTzButtons();
+initFinder();
 loadLaunch();
 setInterval(tickCountdown, 1000);
 registerServiceWorker();

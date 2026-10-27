@@ -77,6 +77,21 @@
       </div>
     </section>
 
+    <section class="panel shared-watchlist" id="shared-watchlist" aria-labelledby="shared-watchlist-title" hidden>
+      <div class="shared-watchlist__head">
+        <div>
+          <p class="eyebrow">Shared watchlist</p>
+          <h2 id="shared-watchlist-title">Shared launches</h2>
+          <p class="shared-watchlist__note" id="shared-watchlist-note"></p>
+        </div>
+        <div class="shared-watchlist__actions">
+          <button type="button" class="btn btn--sm" id="shared-watchlist-import">Add to my watchlist</button>
+          <button type="button" class="linkish" id="shared-watchlist-dismiss">Dismiss</button>
+        </div>
+      </div>
+      <div class="shared-watchlist__items" id="shared-watchlist-items"></div>
+    </section>
+
     <section class="panel cadence-panel" aria-labelledby="cadence-title">
       <header class="panel__head">
         <div>
@@ -130,10 +145,24 @@
         </header>
         <div class="watchlist" id="watchlist" aria-live="polite"></div>
         <div class="watchlist__actions">
+          <button type="button" class="btn btn--sm" id="watchlist-share" disabled>Share link</button>
           <button type="button" class="btn btn--sm" id="watchlist-export">Export JSON</button>
           <button type="button" class="btn btn--sm" id="watchlist-import-button">Import JSON</button>
           <button type="button" class="linkish" id="watchlist-clear">Clear</button>
           <input type="file" id="watchlist-import" accept="application/json,.json" hidden>
+        </div>
+        <div class="watchlist__calendar">
+          <label class="watchlist__reminder" for="watchlist-reminder">
+            <span>Calendar reminder</span>
+            <select id="watchlist-reminder">
+              <option value="">None</option>
+              <option value="15">15 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="1440">1 day</option>
+            </select>
+          </label>
+          <a class="btn btn--sm" id="watchlist-calendar" href="#" download aria-disabled="true">Download calendar</a>
+          <span class="watchlist__hint">Dated launches only</span>
         </div>
         <p class="watchlist__status" id="watchlist-status" role="status" aria-live="polite"></p>
       </section>

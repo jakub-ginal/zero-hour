@@ -1,4 +1,4 @@
-const VERSION = "zh-1.16.0";
+const VERSION = "zh-1.17.0";
 const SHELL_CACHE = `zero-hour-shell-${VERSION}`;
 const API_CACHE = `zero-hour-api-${VERSION}`;
 
@@ -13,6 +13,7 @@ const SHELL = [
   "/shared.js",
   "/mission-control.js",
   "/launch.js",
+  "/finder.js",
   "/ascent.js",
   "/starfield.js",
   "/favicon.svg",
@@ -88,7 +89,7 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname === "/api/health") return;
 
   if (url.pathname.startsWith("/api/")) {
-    event.respondWith(networkFirst(request, API_CACHE));
+    event.respondWith(networkFirst(request, API_CACHE).catch(() => Response.error()));
     return;
   }
 

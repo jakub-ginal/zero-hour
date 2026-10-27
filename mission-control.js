@@ -1,3 +1,4 @@
+import { initFinder } from "./finder.js";
 import {
   DAY,
   dateOnly,
@@ -24,11 +25,26 @@ import {
 
 const $ = (selector) => document.querySelector(selector);
 
+const SHARED_PARAM = "watchlist";
+const SHARED_LIMIT = 100;
+
 const state = {
   launches: [],
   saved: readSaved(),
+  shared: readSharedParam(),
   view: nowMonth(),
 };
+
+function readSharedParam() {
+  const raw = new URLSearchParams(location.search).get(SHARED_PARAM) || "";
+  return new Set(
+    raw
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => id && id.length <= 200)
+      .slice(0, SHARED_LIMIT),
+  );
+}
 
 function nowMonth() {
   const now = new Date();
@@ -229,6 +245,7 @@ function renderWatchlist() {
   const missing = state.saved.size - savedLaunches.length;
   $("#watchlist-count").textContent = state.saved.size;
   $("#watchlist-export").disabled = state.saved.size === 0;
+  $("#watchlist-share").disabled = state.saved.size === 0;
 
   $("#watchlist").innerHTML = savedLaunches.length
     ? savedLaunches
@@ -255,6 +272,135 @@ function renderWatchlist() {
       `<p class="watchlist__note">${missing} saved launch${missing === 1 ? " is" : "es are"} not in the current manifest.</p>`,
     );
   }
+  renderSharedWatchlist();
+  renderWatchlistCalendar();
+}
+
+function watchlistCalendarHref() {
+  const params = new URLSearchParams({ ids: [...state.saved].join(",") });
+  const remind = $("#watchlist-reminder").value;
+  if (remind) params.set("remind", remind);
+  return `/api/watchlist.ics?${params.toString()}`;
+}
+
+function renderWatchlistCalendar() {
+  const link = $("#watchlist-calendar");
+  if (!state.saved.size) {
+    link.removeAttribute("href");
+    link.setAttribute("aria-disabled", "true");
+    return;
+  }
+  link.href = watchlistCalendarHref();
+  link.setAttribute("aria-disabled", "false");
+}
+
+function sharedSummary() {
+  const found = new Map();
+  for (const launch of state.launches) {
+    if (state.shared.has(launch.id)) found.set(launch.id, launch);
+  }
+  const ready = [...found.values()].sort(
+    (a, b) => Date.parse(a.net) - Date.parse(b.net) || missionName(a).localeCompare(missionName(b)),
+  );
+  return { ready, missing: state.shared.size - ready.length };
+}
+
+function renderSharedWatchlist() {
+  const section = $("#shared-watchlist");
+  if (!state.shared.size) {
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+  const { ready, missing } = sharedSummary();
+  const newCount = ready.filter((launch) => !state.saved.has(launch.id)).length;
+  const missingNote = missing
+    ? ` ${missing} launch${missing === 1 ? " is" : "es are"} no longer in the current manifest.`
+    : "";
+  $("#shared-watchlist-title").textContent = `${ready.length} shared launch${ready.length === 1 ? "" : "es"}`;
+  $("#shared-watchlist-note").textContent = ready.length
+    ? `Review this shared set, then import it into your local watchlist.${missingNote}`
+    : `None of these launches are in the current manifest.${missingNote}`;
+
+  const button = $("#shared-watchlist-import");
+  if (!ready.length) {
+    button.disabled = true;
+    button.textContent = "Nothing to import";
+  } else if (!newCount) {
+    button.disabled = true;
+    button.textContent = "Already in watchlist";
+  } else {
+    button.disabled = false;
+    button.textContent = `Add ${newCount} launch${newCount === 1 ? "" : "es"}`;
+  }
+
+  $("#shared-watchlist-items").innerHTML = ready.length
+    ? ready
+        .slice(0, 6)
+        .map(
+          (launch) => `
+          <a class="shared-watchlist__item" href="/launch.html?id=${encodeURIComponent(launch.id)}">
+            <span class="shared-watchlist__name">${esc(missionName(launch))}</span>
+            <span class="shared-watchlist__meta">${esc(whenTextLocal(launch))} · ${esc(providerName(launch))}</span>
+          </a>`,
+        )
+        .join("") +
+      (ready.length > 6 ? `<p class="shared-watchlist__more">+${ready.length - 6} more</p>` : "")
+    : '<p class="empty">Those launch IDs were not found.</p>';
+}
+
+function watchlistShareUrl() {
+  const url = new URL("/mission-control.html", location.origin);
+  url.searchParams.set(SHARED_PARAM, [...state.saved].slice(0, SHARED_LIMIT).join(","));
+  return url.href;
+}
+
+function clearSharedParam() {
+  const url = new URL(location.href);
+  if (!url.searchParams.has(SHARED_PARAM)) return;
+  url.searchParams.delete(SHARED_PARAM);
+  history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function dismissSharedWatchlist(message) {
+  state.shared.clear();
+  clearSharedParam();
+  renderSharedWatchlist();
+  if (message) $("#watchlist-status").textContent = message;
+}
+
+async function shareWatchlist() {
+  if (!state.saved.size) return;
+  const url = watchlistShareUrl();
+  try {
+    if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
+      throw new Error("Clipboard unavailable");
+    }
+    await navigator.clipboard.writeText(url);
+    const count = Math.min(state.saved.size, SHARED_LIMIT);
+    $("#watchlist-status").textContent = `Share link copied · ${count} launch${count === 1 ? "" : "es"}.`;
+    showToast("Share link copied");
+  } catch {
+    window.prompt("Copy this watchlist link:", url);
+  }
+}
+
+function importSharedWatchlist() {
+  const { ready } = sharedSummary();
+  let added = 0;
+  for (const launch of ready) {
+    if (state.saved.has(launch.id)) continue;
+    state.saved.add(launch.id);
+    added += 1;
+  }
+  if (!added) {
+    showToast("Already in your watchlist");
+    return;
+  }
+  writeSaved(state.saved);
+  dismissSharedWatchlist(`Added ${added} shared launch${added === 1 ? "" : "es"} to your watchlist.`);
+  renderWatchlist();
+  showToast(`Added ${added} to watchlist`);
 }
 
 function renderCalendar() {
@@ -409,6 +555,12 @@ function wireControls() {
   });
   $("#control-retry").addEventListener("click", loadManifest);
   $("#watchlist-export").addEventListener("click", downloadWatchlist);
+  $("#watchlist-share").addEventListener("click", shareWatchlist);
+  $("#watchlist-reminder").addEventListener("change", renderWatchlistCalendar);
+  $("#shared-watchlist-import").addEventListener("click", importSharedWatchlist);
+  $("#shared-watchlist-dismiss").addEventListener("click", () =>
+    dismissSharedWatchlist("Shared watchlist dismissed."),
+  );
   $("#watchlist-import-button").addEventListener("click", () => $("#watchlist-import").click());
   $("#watchlist-import").addEventListener("change", (event) => {
     const file = event.target.files && event.target.files[0];
@@ -445,6 +597,7 @@ function wireControls() {
 
 wireTzButtons();
 wireControls();
+initFinder();
 loadManifest();
 setInterval(tickCountdowns, 1000);
 registerServiceWorker();

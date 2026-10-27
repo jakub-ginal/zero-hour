@@ -1,4 +1,5 @@
 import { startAscent } from "./ascent.js";
+import { initFinder } from "./finder.js";
 import { startStarfield } from "./starfield.js";
 
 const API = "/api/launches?limit=100";
@@ -1215,6 +1216,7 @@ wire();
 wireNav();
 wireInstall();
 registerServiceWorker();
+initFinder();
 renderSavedUI();
 setTz(tz);
 loadLaunches();
