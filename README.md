@@ -22,18 +22,26 @@ The frontend is an installable PWA with an offline shell and launch caching. Lau
 filters and calendar scopes are reflected in the URL, so filtered views can be
 bookmarked or shared.
 
-## Mission control and briefings
+## Mission control, briefings, and search
 
 - `/mission-control.html` summarizes launch cadence, provider share, status mix,
   the next dated lift-offs, and the month ahead.
 - `/launch.html?id=...` is a permanent launch briefing with a live countdown, the
   full mission file, pad details, links, save controls, and an iCalendar download.
   Previous/next controls and the arrow keys move through the manifest.
+- Press Ctrl K (or `/`) on any page to open the launch finder. It searches missions,
+  providers, vehicles, pads, locations, and statuses; results work offline from the
+  cached manifest.
 - Calendar downloads can include a 15-minute, 1-hour, or 1-day reminder.
 - Watchlists stay in browser storage under `zh-saved`. Mission control can export
   them as JSON and merge an exported watchlist back in on any browser.
-- Both new pages are part of the offline shell. Install support is available in
-  Chromium browsers; Firefox desktop does not offer PWA installation.
+- Mission control can copy a share link that encodes the current watchlist in
+  `?watchlist=...`. Opening it shows a preview before anything is imported locally.
+- The watchlist can be downloaded as a multi-event iCalendar file with an optional
+  15-minute, 1-hour, or 1-day reminder. Dated launches are included; tentative
+  placeholders stay in the JSON export until their dates firm up.
+- All pages, including the finder, are part of the offline shell. Install support is
+  available in Chromium browsers; Firefox desktop does not offer PWA installation.
 
 ## API
 
@@ -42,6 +50,7 @@ bookmarked or shared.
 - `GET /api/launches/{id}` - one launch by id or slug
 - `GET /api/launches/{id}/calendar.ics` - one launch as an iCalendar event
 - `GET /api/launches/{id}/calendar.ics?remind=60` - include a reminder 60 minutes before
+- `GET /api/watchlist.ics?ids=...&remind=60` - a multi-event calendar from saved launch ids
 - `GET /api/calendar` - confirmed launches as a subscribable calendar feed
 - `GET /api/calendar.ics` - same feed, kept as an alias
 - `GET /api/calendar?provider=spacex&status=Go&days=30` - filtered calendar feed
