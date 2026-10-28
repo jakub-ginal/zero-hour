@@ -291,6 +291,6 @@ async def get_launch(launch_id: str, request: Request) -> Launch:
     return launch
 
 
-frontend_dir = Path(__file__).resolve().parents[2]
+frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
 if settings.serve_frontend and (frontend_dir / "index.html").exists():
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")

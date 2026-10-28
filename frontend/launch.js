@@ -4,6 +4,10 @@ import {
   esc,
   fuzzyDate,
   isPrecise,
+  launchDayHeadline,
+  launchDayKicker,
+  launchDayRefreshDue,
+  launchDayState,
   missionName,
   pad,
   providerName,
@@ -29,6 +33,7 @@ const state = {
   launches: [],
   saved: readSaved(),
   reminder: "",
+  lastLoadAt: null,
 };
 
 function showToast(message) {
@@ -109,6 +114,38 @@ function countdownMarkup(launch) {
     <p class="briefing__countdown-label" id="countdown-label">${cd.past ? "since T-0" : "until T-0"}</p>`;
 }
 
+function launchDayMarkup(launch) {
+  const day = launchDayState(launch);
+  if (!day.active) return "";
+  const video = safeUrl(launch.video_url);
+  const status = launch.status || {};
+  const meta = [windowText(launch)];
+  if (launch.probability != null) meta.push(`${launch.probability}% weather go`);
+  return `
+    <section class="launchday launchday--briefing" data-phase="${day.phase}" aria-label="Launch day status">
+      <div class="launchday__signal">
+        <span class="launchday__pulse" aria-hidden="true"></span>
+        ${esc(launchDayKicker(day))}
+      </div>
+      <div class="launchday__copy">
+        <strong>${esc(launchDayHeadline(launch, day))}</strong>
+        <span>${esc(meta.join(" · "))}</span>
+        ${status.description ? `<small>${esc(status.description)}</small>` : ""}
+      </div>
+      <div class="launchday__actions">
+        ${video ? `<a class="btn btn--sm ${day.live ? "btn--live" : "btn--primary"}" href="${esc(video)}" target="_blank" rel="noopener">${day.live ? "Watch live" : "Watch webcast"}</a>` : ""}
+        <span class="launchday__updated" id="briefing-launchday-updated">Updated just now</span>
+      </div>
+    </section>`;
+}
+
+function paintLaunchDayUpdated() {
+  const label = $("#briefing-launchday-updated");
+  if (!label || !state.lastLoadAt) return;
+  const mins = Math.max(0, Math.round((Date.now() - state.lastLoadAt) / 60_000));
+  label.textContent = mins === 0 ? "Updated just now" : `Updated ${mins}m ago`;
+}
+
 function mediaMarkup(launch) {
   const image = safeUrl(launch.image_url || launch.thumbnail_url);
   const credit = launch.image_credit
@@ -183,6 +220,8 @@ function render() {
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
         ${esc(back.label)}
       </a>
+
+      ${launchDayMarkup(launch)}
 
       <header class="briefing__hero">
         <div class="briefing__copy">
@@ -313,6 +352,7 @@ function render() {
   $("#briefing-share").addEventListener("click", shareLaunch);
   $("#briefing-share-again").addEventListener("click", shareLaunch);
   wireReminder(launch);
+  paintLaunchDayUpdated();
 }
 
 function wireReminder(launch) {
@@ -380,8 +420,8 @@ function tickCountdown() {
   if (label) label.textContent = cd.past ? "since T-0" : "until T-0";
 }
 
-async function loadLaunch() {
-  $("#briefing-error").hidden = true;
+async function loadLaunch({ silent = false } = {}) {
+  if (!silent) $("#briefing-error").hidden = true;
   if (!launchId) {
     showError("No launch selected.", "Choose a launch from the manifest to open its briefing.");
     return;
@@ -402,8 +442,13 @@ async function loadLaunch() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     state.launch = await response.json();
     state.launches = list && Array.isArray(list.results) ? list.results : [];
+    state.lastLoadAt = Date.now();
     render();
   } catch {
+    if (silent && state.launch) {
+      showToast("Could not refresh launch data");
+      return;
+    }
     showError("Could not load this launch.", "Check your connection or try again in a moment.");
   }
 }
@@ -441,5 +486,14 @@ wireTzButtons();
 initFinder();
 loadLaunch();
 setInterval(tickCountdown, 1000);
+setInterval(paintLaunchDayUpdated, 30_000);
+setInterval(() => {
+  if (document.hidden || !state.launch) return;
+  if (launchDayState(state.launch).active) loadLaunch({ silent: true });
+}, 5 * 60_000);
+setInterval(() => {
+  if (document.hidden || !state.launch) return;
+  if (launchDayRefreshDue(state.launch)) loadLaunch({ silent: true });
+}, 60_000);
 registerServiceWorker();
 import("/starfield.js").catch(() => {});

@@ -1,5 +1,11 @@
 import { startAscent } from "./ascent.js";
 import { initFinder } from "./finder.js";
+import {
+  launchDayHeadline,
+  launchDayKicker,
+  launchDayRefreshDue,
+  launchDayState,
+} from "./shared.js";
 import { startStarfield } from "./starfield.js";
 
 const API = "/api/launches?limit=100";
@@ -8,6 +14,7 @@ const SAVED_KEY = "zh-saved";
 const HOUR = 3600 * 1000;
 const DAY = 24 * HOUR;
 const REFRESH_MS = 5 * 60 * 1000;
+const LAUNCH_DAY_REFRESH_MS = 60 * 1000;
 const PAGE_SIZE = 24;
 const RANGES = { "24h": DAY, "7d": 7 * DAY, "30d": 30 * DAY };
 const isRange = (value) => typeof RANGES[value] === "number";
@@ -51,6 +58,7 @@ const calendarLink = document.querySelector("#calendar-link");
 let launches = [];
 let nextLaunch = null;
 let fetchedAt = null;
+let lastLoadAt = null;
 let stale = false;
 let lastTrigger = null;
 let heroSignature = "";
@@ -348,6 +356,30 @@ function pickNextLaunch() {
     null;
 }
 
+function launchDayMarkup(launch, state) {
+  if (!state.active) return "";
+  const video = safeUrl(launch.video_url);
+  const status = launch.status || {};
+  const meta = [windowText(launch)];
+  if (launch.probability != null) meta.push(`${launch.probability}% weather go`);
+  return `
+    <div class="launchday" data-phase="${state.phase}">
+      <div class="launchday__signal">
+        <span class="launchday__pulse" aria-hidden="true"></span>
+        ${esc(launchDayKicker(state))}
+      </div>
+      <div class="launchday__copy">
+        <strong>${esc(launchDayHeadline(launch, state))}</strong>
+        <span>${esc(meta.join(" · "))}</span>
+        ${status.description ? `<small>${esc(status.description)}</small>` : ""}
+      </div>
+      <div class="launchday__actions">
+        ${video ? `<a class="btn btn--sm ${state.live ? "btn--live" : "btn--primary"}" href="${esc(video)}" target="_blank" rel="noopener">${state.live ? "Watch live" : "Watch webcast"}</a>` : ""}
+        <span class="launchday__updated" id="hero-launchday-updated">Updated just now</span>
+      </div>
+    </div>`;
+}
+
 function renderHero() {
   if (!nextLaunch) {
     if (heroSignature === "empty") return;
@@ -357,11 +389,18 @@ function renderHero() {
   }
   const providers = new Set(launches.map((launch) => providerName(launch) || "Unknown"));
   const pad = nextLaunch.pad || {};
+  const day = launchDayState(nextLaunch);
   const signature = [
     nextLaunch.id,
     nextLaunch.net,
     statusAbbrev(nextLaunch),
     nextLaunch.webcast_live ? 1 : 0,
+    nextLaunch.probability,
+    nextLaunch.video_url,
+    nextLaunch.window_start,
+    nextLaunch.window_end,
+    nextLaunch.status && nextLaunch.status.description,
+    day.active ? day.phase : "",
     missionName(nextLaunch),
     rocketName(nextLaunch),
     providerName(nextLaunch),
@@ -383,7 +422,7 @@ function renderHero() {
     .join(" ");
 
   heroContent.innerHTML = `
-    <p class="hero__eyebrow">${nextLaunch.webcast_live ? "Live now" : "Next launch"}</p>
+    <p class="hero__eyebrow">${day.live ? "Live now" : day.active ? "Launch day" : "Next launch"}</p>
     <h2 class="hero__title">${title}</h2>
     <p class="hero__sub">${esc(rocketName(nextLaunch) || "Unknown rocket")} · ${esc(providerName(nextLaunch) || "Unknown provider")}</p>
     ${
@@ -405,6 +444,7 @@ function renderHero() {
       <div><dt>Liftoff</dt><dd>${esc(liftoff)}</dd></div>
       <div><dt>Pad</dt><dd>${countryLabel(pad.country_code)}${esc(pad.location || pad.name || "Unknown")}</dd></div>
     </dl>
+    ${launchDayMarkup(nextLaunch, day)}
     <div class="hero__actions">
       <button type="button" class="btn btn--primary" id="hero-details">
         Mission briefing
@@ -604,12 +644,18 @@ function renderClock() {
 
 function renderSync() {
   if (!fetchedAt) return;
+  const updated = document.querySelector("#hero-launchday-updated");
   if (stale) {
     sync.textContent = "Showing cached data";
+    if (updated) updated.textContent = "Cached data";
     return;
   }
   const mins = Math.max(0, Math.round((Date.now() - fetchedAt) / 60_000));
   sync.textContent = mins === 0 ? "Synced just now" : `Synced ${mins} min ago`;
+  if (updated && lastLoadAt) {
+    const localMins = Math.max(0, Math.round((Date.now() - lastLoadAt) / 60_000));
+    updated.textContent = localMins === 0 ? "Updated just now" : `Updated ${localMins}m ago`;
+  }
 }
 
 function matches(launch) {
@@ -1188,6 +1234,7 @@ async function loadLaunches() {
     launches = (data.results || []).sort((a, b) => new Date(a.net) - new Date(b.net));
     stale = Boolean(data.stale);
     fetchedAt = data.fetched_at ? new Date(data.fetched_at).getTime() : Date.now();
+    lastLoadAt = Date.now();
     if (errorPanel) errorPanel.hidden = true;
 
     pickNextLaunch();
@@ -1233,3 +1280,7 @@ loadLaunches();
 setInterval(tick, 1000);
 setInterval(renderSync, 30_000);
 setInterval(loadLaunches, REFRESH_MS);
+setInterval(() => {
+  if (document.hidden || !nextLaunch) return;
+  if (launchDayRefreshDue(nextLaunch)) loadLaunches();
+}, LAUNCH_DAY_REFRESH_MS);

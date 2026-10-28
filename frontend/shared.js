@@ -158,6 +158,54 @@ export function statusPill(launch) {
   return `<span class="pill pill--${statusClass(abbrev)}" title="${esc(title)}">${esc(abbrev)}</span>`;
 }
 
+export function launchDayState(launch, now = Date.now()) {
+  const net = launch && launch.net ? new Date(launch.net).getTime() : NaN;
+  if (!Number.isFinite(net)) {
+    return { active: false, phase: "upcoming", diff: NaN, live: false, inWindow: false };
+  }
+  const diff = net - now;
+  const live = Boolean(launch.webcast_live);
+  const precise = isPrecise(launch);
+  const windowStart = launch.window_start ? new Date(launch.window_start).getTime() : NaN;
+  const windowEnd = launch.window_end ? new Date(launch.window_end).getTime() : NaN;
+  const inWindow =
+    Number.isFinite(windowStart) && Number.isFinite(windowEnd) && now >= windowStart && now <= windowEnd;
+  const near = precise && diff <= DAY && diff > -6 * HOUR;
+  const active = live || near;
+  let phase = "upcoming";
+  if (live) phase = "live";
+  else if (near && diff < 0) phase = "liftoff";
+  else if (inWindow) phase = "window";
+  else if (near) phase = "today";
+  return { active, phase, diff, live, precise, inWindow };
+}
+
+export function launchDayKicker(state) {
+  if (!state || !state.active) return "";
+  if (state.phase === "live") return "Live now";
+  if (state.phase === "liftoff") return "T+ tracking";
+  if (state.phase === "window") return "Window open";
+  return "Launch day";
+}
+
+export function launchDayHeadline(launch, state) {
+  if (!state || !state.active) return "";
+  if (state.phase === "live") return "Live now";
+  const abbrev = statusAbbrev(launch).toUpperCase();
+  if (abbrev === "HOLD") return "Launch is on hold";
+  if (state.phase === "liftoff") return "Awaiting launch confirmation";
+  if (state.phase === "window") return "Launch window is open";
+  if (abbrev === "GO") return "Go for launch";
+  return "Launch day";
+}
+
+export function launchDayRefreshDue(launch, now = Date.now()) {
+  const state = launchDayState(launch, now);
+  if (!state.active) return false;
+  if (state.live) return true;
+  return Number.isFinite(state.diff) && state.diff <= 3 * HOUR && state.diff > -HOUR;
+}
+
 export function missionName(launch) {
   const parts = launch.name.split(" | ");
   if (parts.length > 1) return parts.slice(1).join(" | ");
