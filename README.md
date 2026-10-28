@@ -5,6 +5,11 @@ A launch tracker for upcoming rocket launches, with countdowns, mission control,
 Launch data comes from [Launch Library 2](https://thespacedevs.com/llapi) through a
 small FastAPI service that caches the upstream response so the free tier lasts longer.
 
+## Project layout
+
+- `frontend/` - the installable PWA, pages, styles, scripts, and static icons.
+- `backend/` - the FastAPI service, launch cache, calendar feeds, and API tests.
+
 ## Run it locally
 
 Requires Python 3.13+ and [uv](https://docs.astral.sh/uv/).
@@ -29,6 +34,8 @@ bookmarked or shared.
 - `/launch.html?id=...` is a permanent launch briefing with a live countdown, the
   full mission file, pad details, links, save controls, and an iCalendar download.
   Previous/next controls and the arrow keys move through the manifest.
+- Launch day mode highlights the next lift-off within 24 hours, surfaces the live
+  webcast, and refreshes the home hero and briefing every minute near T-0.
 - Press Ctrl K (or `/`) on any page to open the launch finder. It searches missions,
   providers, vehicles, pads, locations, and statuses; results work offline from the
   cached manifest.
