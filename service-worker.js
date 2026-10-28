@@ -1,4 +1,4 @@
-const VERSION = "zh-1.17.0";
+const VERSION = "zh-1.19.1";
 const SHELL_CACHE = `zero-hour-shell-${VERSION}`;
 const API_CACHE = `zero-hour-api-${VERSION}`;
 
@@ -10,6 +10,7 @@ const SHELL = [
   "/launch.html",
   "/styles.css",
   "/app.js",
+  "/theme.js",
   "/shared.js",
   "/mission-control.js",
   "/launch.js",
