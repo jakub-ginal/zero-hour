@@ -4,7 +4,22 @@
 const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Must match .hero__planet in styles.css.
-const PLANET = { width: 2400, height: 1400, bottom: -1250 };
+const PLANET = { width: 2400, height: 1600, bottom: -1300 };
+
+let rocket = { trail: "120, 180, 255", hot: "225, 245, 255", glow: "142, 205, 245", hue: 195 };
+
+function readRocketTheme() {
+  const style = getComputedStyle(document.documentElement);
+  rocket = {
+    trail: style.getPropertyValue("--rocket-rgb").trim() || rocket.trail,
+    hot: style.getPropertyValue("--rocket-hot").trim() || rocket.hot,
+    glow: style.getPropertyValue("--rocket-glow").trim() || rocket.glow,
+    hue: Number.parseFloat(style.getPropertyValue("--rocket-hue")) || rocket.hue,
+  };
+}
+
+readRocketTheme();
+window.addEventListener("zh-themechange", readRocketTheme);
 
 export function startAscent(canvas, hero) {
   if (reduced) return;
@@ -31,24 +46,35 @@ export function startAscent(canvas, hero) {
   }
 
   function horizonY(x) {
-    const cx = w / 2;
-    const top = h - PLANET.bottom - PLANET.height;
-    const rx = PLANET.width / 2;
-    const ry = PLANET.height;
-    const t = Math.min(Math.abs(x - cx) / rx, 0.999);
-    return top + ry * (1 - Math.sqrt(1 - t * t));
+    const a = PLANET.width / 2;
+    const b = PLANET.height / 2;
+    const planetTop = h - PLANET.bottom - PLANET.height;
+    const dx = Math.min(Math.abs(x - w / 2), a * 0.98);
+    return planetTop + b - b * Math.sqrt(1 - (dx / a) ** 2);
   }
 
   function launch() {
-    const sx = w * (0.2 + Math.random() * 0.6);
+    const narrow = w < 980;
+    const leftEdge = !narrow && Math.random() < 0.58;
+    let sx;
+    let dir;
+    if (narrow) {
+      sx = w - 14 - Math.random() * 6;
+      dir = 1;
+    } else if (leftEdge) {
+      sx = w * (0.035 + Math.random() * 0.025);
+      dir = -1;
+    } else {
+      sx = w * (0.96 + Math.random() * 0.025);
+      dir = 1;
+    }
     const sy = horizonY(sx);
-    const dir = Math.random() < 0.5 ? 1 : -1;
     flight = {
       t0: performance.now(),
-      duration: 6500 + Math.random() * 2200,
+      duration: 6800 + Math.random() * 2200,
       p0: { x: sx, y: sy },
-      p1: { x: sx, y: sy - h * 0.7 },
-      p2: { x: sx + dir * w * 0.25, y: -80 },
+      p1: { x: sx, y: sy - h * 0.72 },
+      p2: { x: sx + dir * w * (narrow ? 0.25 : 0.3), y: -80 },
       prev: { x: sx, y: sy },
     };
     particles = [];
@@ -76,7 +102,7 @@ export function startAscent(canvas, hero) {
         life: 1,
         decay: 0.012 + Math.random() * 0.02,
         size: 1 + Math.random() * 2.6,
-        hue: 18 + Math.random() * 22,
+        hue: rocket.hue + Math.random() * 25,
       });
     }
   }
@@ -88,9 +114,9 @@ export function startAscent(canvas, hero) {
     if (flash <= 0) return;
     const radius = 40 + (1 - flash) * 130;
     const g = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius);
-    g.addColorStop(0, `rgba(255,180,120,${flash * 0.5})`);
-    g.addColorStop(0.5, `rgba(255,120,60,${flash * 0.18})`);
-    g.addColorStop(1, "rgba(255,120,60,0)");
+    g.addColorStop(0, `rgba(${rocket.hot}, ${flash * 0.5})`);
+    g.addColorStop(0.5, `rgba(${rocket.glow}, ${flash * 0.2})`);
+    g.addColorStop(1, `rgba(${rocket.trail}, 0)`);
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
@@ -123,7 +149,7 @@ export function startAscent(canvas, hero) {
         for (let i = 0; i < trail.length - 1; i++) {
           const a = trail[i];
           const b = trail[i + 1];
-          ctx.strokeStyle = `rgba(120,180,255,${a.life * 0.28})`;
+          ctx.strokeStyle = `rgba(${rocket.trail}, ${a.life * 0.28})`;
           ctx.lineWidth = 1.2 + a.life * 1.6;
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
@@ -138,7 +164,7 @@ export function startAscent(canvas, hero) {
           p.life -= p.decay * dt;
           if (p.life <= 0) continue;
           const alpha = Math.max(p.life, 0) * 0.8;
-          ctx.fillStyle = `hsla(${p.hue}, 100%, ${55 + p.life * 20}%, ${alpha})`;
+          ctx.fillStyle = `hsla(${p.hue}, 78%, ${58 + p.life * 18}%, ${alpha})`;
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
           ctx.fill();
@@ -155,9 +181,9 @@ export function startAscent(canvas, hero) {
           pos.y - Math.sin(angle) * 6,
           14,
         );
-        plume.addColorStop(0, "rgba(255,240,210,0.95)");
-        plume.addColorStop(0.4, "rgba(255,150,70,0.7)");
-        plume.addColorStop(1, "rgba(255,90,40,0)");
+        plume.addColorStop(0, `rgba(${rocket.hot}, 0.95)`);
+        plume.addColorStop(0.4, `rgba(${rocket.glow}, 0.7)`);
+        plume.addColorStop(1, `rgba(${rocket.trail}, 0)`);
         ctx.fillStyle = plume;
         ctx.beginPath();
         ctx.arc(pos.x - Math.cos(angle) * 6, pos.y - Math.sin(angle) * 6, 14, 0, Math.PI * 2);

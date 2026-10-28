@@ -388,10 +388,14 @@ function renderHero() {
     <p class="hero__sub">${esc(rocketName(nextLaunch) || "Unknown rocket")} · ${esc(providerName(nextLaunch) || "Unknown provider")}</p>
     ${
       isPrecise(nextLaunch)
-        ? `<div class="countdown" id="hero-countdown">
+        ? `<div class="countdown" id="hero-countdown" aria-live="off">
+      <div class="countdown__sign">T&minus;</div>
       <div class="countdown__unit"><strong data-unit="d">00</strong><span>Days</span></div>
+      <span class="countdown__sep" aria-hidden="true">:</span>
       <div class="countdown__unit"><strong data-unit="h">00</strong><span>Hours</span></div>
+      <span class="countdown__sep" aria-hidden="true">:</span>
       <div class="countdown__unit"><strong data-unit="m">00</strong><span>Minutes</span></div>
+      <span class="countdown__sep" aria-hidden="true">:</span>
       <div class="countdown__unit"><strong data-unit="s">00</strong><span>Seconds</span></div>
     </div>`
         : `<p class="hero__net">NET ${esc(fuzzyDate(nextLaunch))}</p>`
@@ -402,8 +406,14 @@ function renderHero() {
       <div><dt>Pad</dt><dd>${countryLabel(pad.country_code)}${esc(pad.location || pad.name || "Unknown")}</dd></div>
     </dl>
     <div class="hero__actions">
-      <button type="button" class="btn btn--primary" id="hero-details">Mission briefing</button>
-      <button type="button" class="btn" id="hero-calendar">Add to calendar</button>
+      <button type="button" class="btn btn--primary" id="hero-details">
+        Mission briefing
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+      </button>
+      <button type="button" class="btn" id="hero-calendar">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>
+        Add to calendar
+      </button>
     </div>
     <div class="hero__stats">
       <div class="hero__stat"><b>${launches.length}</b><span>Tracked</span></div>
@@ -656,7 +666,7 @@ function card(launch) {
 
   return `
     <article class="card" data-id="${esc(launch.id)}">
-      <div class="card__media">
+      <div class="card__media${image ? "" : " card__media--empty"}">
         ${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ""}
         <div class="card__badges">
           ${statusPill(launch)}

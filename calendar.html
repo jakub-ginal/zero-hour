@@ -6,6 +6,16 @@
   <title>Calendar feed - Zero Hour</title>
   <meta name="description" content="Subscribe to upcoming rocket launches in your calendar app.">
   <meta name="theme-color" content="#05060b">
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem("zh-theme");
+        document.documentElement.dataset.theme = ["ice", "graphite", "aurora", "sand"].includes(theme) ? theme : "ice";
+      } catch (error) {
+        document.documentElement.dataset.theme = "ice";
+      }
+    })();
+  </script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="manifest" href="site.webmanifest">
@@ -25,8 +35,8 @@
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <defs>
       <linearGradient id="mark-grad" x1="0" y1="1" x2="1" y2="0">
-        <stop offset="0" stop-color="#ff5a1f"/>
-        <stop offset="1" stop-color="#ffc861"/>
+        <stop offset="0" stop-color="var(--logo-a)"/>
+        <stop offset="1" stop-color="var(--logo-b)"/>
       </linearGradient>
       <symbol id="mark" viewBox="0 0 48 48">
         <circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-opacity=".25" stroke-width="2"/>
@@ -115,6 +125,7 @@
     </div>
   </main>
 
+  <script type="module" src="theme.js"></script>
   <script type="module">
     import { initFinder } from "./finder.js";
 
