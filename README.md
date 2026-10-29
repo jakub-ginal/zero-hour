@@ -36,6 +36,9 @@ bookmarked or shared.
   Previous/next controls and the arrow keys move through the manifest.
 - Launch day mode highlights the next lift-off within 24 hours, surfaces the live
   webcast, and refreshes the home hero and briefing every minute near T-0.
+- The home hero includes an interactive launch globe. Drag or use the arrow keys to
+  rotate it, click a pad to open its briefing, and follow the highlighted trajectory
+  arc for the next lift-off.
 - Press Ctrl K (or `/`) on any page to open the launch finder. It searches missions,
   providers, vehicles, pads, locations, and statuses; results work offline from the
   cached manifest.
