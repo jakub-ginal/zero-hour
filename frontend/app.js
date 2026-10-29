@@ -1,5 +1,6 @@
 import { startAscent } from "./ascent.js";
 import { initFinder } from "./finder.js";
+import { startGlobe } from "./globe.js";
 import {
   launchDayHeadline,
   launchDayKicker,
@@ -40,7 +41,7 @@ const detail = document.querySelector("#detail");
 const detailBody = document.querySelector("#detail-body");
 const detailMedia = document.querySelector("#detail-media");
 const sync = document.querySelector("#sync");
-const radarBlips = document.querySelector("#radar-blips");
+const globeCanvas = document.querySelector("#globe-canvas");
 const clock = document.querySelector("#utc-clock");
 const clockTz = document.querySelector("#clock-tz");
 const stat24h = document.querySelector("#stat-24h");
@@ -67,6 +68,7 @@ let tz = "local";
 const saved = readSaved();
 let installPrompt = null;
 const filters = readFilters();
+const globe = globeCanvas ? startGlobe(globeCanvas, { onSelect: (id) => openDetail(id) }) : null;
 
 try {
   tz = localStorage.getItem("zh-tz") === "utc" ? "utc" : "local";
@@ -475,30 +477,8 @@ function renderHero() {
   }
 }
 
-function radarPoint(lat, lon) {
-  const phi = (lat * Math.PI) / 180;
-  const theta = (lon * Math.PI) / 180;
-  return {
-    x: 50 + Math.cos(phi) * Math.sin(theta) * 44,
-    y: 50 - Math.sin(phi) * 44,
-  };
-}
-
-function renderRadar() {
-  const points = [];
-  for (const launch of launches) {
-    const pad = launch.pad;
-    if (!pad || pad.latitude == null || pad.longitude == null) continue;
-    points.push(radarPoint(pad.latitude, pad.longitude));
-  }
-
-  radarBlips.innerHTML = points
-    .slice(0, 18)
-    .map(
-      (point, index) =>
-        `<span class="radar__blip" style="--x:${point.x.toFixed(2)}%;--y:${point.y.toFixed(2)}%;--delay:${(index * 0.17).toFixed(2)}s"></span>`,
-    )
-    .join("");
+function renderGlobe() {
+  if (globe) globe.setLaunches(launches, nextLaunch);
 
   const within = (launch, ms) => {
     const time = new Date(launch.net).getTime();
@@ -1241,7 +1221,7 @@ async function loadLaunches() {
     renderHero();
     renderProviders();
     renderLaunches();
-    renderRadar();
+    renderGlobe();
     renderSync();
     openFromHash();
   } catch (error) {

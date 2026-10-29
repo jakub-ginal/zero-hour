@@ -119,12 +119,18 @@
             <div class="hero__stat"><b id="stat-window">--</b><span>Next lift-off</span></div>
           </div>
         </div>
-        <div class="radar-wrap">
-          <p class="radar__heading"><span class="radar__dot"></span>Live orbital traffic</p>
-          <div class="radar" aria-hidden="true">
-            <div class="radar__grid"></div>
-            <div class="radar__sweep"></div>
-            <div class="radar__blips" id="radar-blips"></div>
+        <div class="radar-wrap globe-wrap">
+          <div class="globe__head">
+            <p class="radar__heading"><span class="radar__dot"></span>Launch globe</p>
+            <span class="globe__hint">Drag · click pads</span>
+          </div>
+          <div class="globe">
+            <canvas
+              id="globe-canvas"
+              tabindex="0"
+              role="img"
+              aria-label="Interactive globe of upcoming launch pads. Drag or use arrow keys to rotate. Press Enter to open the next launch."
+            ></canvas>
           </div>
           <div class="radar__stats">
             <div><b id="stat-24h">--</b><span>Next 24h</span></div>
