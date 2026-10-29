@@ -27,6 +27,12 @@ The frontend is an installable PWA with an offline shell and launch caching. Lau
 filters and calendar scopes are reflected in the URL, so filtered views can be
 bookmarked or shared.
 
+## Deploy
+
+1. Create a Cloudflare Tunnel with the public hostname service `http://app:8000`.
+2. Copy `.env.example` to `.env` and set `CLOUDFLARE_TUNNEL_TOKEN`.
+3. Run `docker compose up -d --build`.
+
 ## Mission control, briefings, and search
 
 - `/mission-control.html` summarizes launch cadence, provider share, status mix,

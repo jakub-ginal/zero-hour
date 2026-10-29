@@ -1,0 +1,33 @@
+name: zero-hour
+
+services:
+  app:
+    build: .
+    image: zero-hour:0.6.0
+    restart: unless-stopped
+    environment:
+      ZH_LL2_API_TOKEN: ${ZH_LL2_API_TOKEN:-}
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    # The app publishes no ports, so only cloudflared can reach it.
+    # To test without the tunnel, uncomment this to reach http://localhost:8000.
+    # ports:
+    #   - "127.0.0.1:8000:8000"
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.6
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?Set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      app:
+        condition: service_healthy
