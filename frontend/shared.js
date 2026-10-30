@@ -135,7 +135,7 @@ export function whenText(launch) {
 
 export function windowText(launch) {
   if (!launch.window_start || !launch.window_end || !isPrecise(launch)) return "Not yet published";
-  return `${timeOnly(launch.window_start)} – ${timeOnly(launch.window_end)} ${tzLabel()}`;
+  return `${timeOnly(launch.window_start)} - ${timeOnly(launch.window_end)} ${tzLabel()}`;
 }
 
 export function statusAbbrev(launch) {

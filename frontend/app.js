@@ -693,7 +693,7 @@ function card(launch) {
   return `
     <article class="card" data-id="${esc(launch.id)}">
       <div class="card__media${image ? "" : " card__media--empty"}">
-        ${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ""}
+        ${image ? `<img src="${esc(image)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}
         <div class="card__badges">
           ${statusPill(launch)}
           ${orbit ? `<span class="pill pill--orbit" title="${esc((launch.mission && launch.mission.orbit) || "")}">${esc(orbit)}</span>` : ""}
@@ -846,7 +846,7 @@ function mapEmbed(lat, lon) {
 
 function windowText(launch) {
   if (!launch.window_start || !launch.window_end || !isPrecise(launch)) return "Not yet published";
-  return `${timeOnly(launch.window_start)} – ${timeOnly(launch.window_end)} ${tzLabel()}`;
+  return `${timeOnly(launch.window_start)} - ${timeOnly(launch.window_end)} ${tzLabel()}`;
 }
 
 function launchLink(launch) {

@@ -1,4 +1,4 @@
-const VERSION = "zh-1.21.0";
+const VERSION = "zh-1.22.1";
 const SHELL_CACHE = `zero-hour-shell-${VERSION}`;
 const API_CACHE = `zero-hour-api-${VERSION}`;
 

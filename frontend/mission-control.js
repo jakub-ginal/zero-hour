@@ -96,7 +96,7 @@ function renderCadence() {
   $("#cadence").innerHTML = weeks
     .map((week) => {
       const height = week.count ? Math.max(9, Math.round((week.count / max) * 100)) : 2;
-      const label = week.index === 0 ? "0–7d" : `${week.index * 7}–${week.index * 7 + 7}d`;
+      const label = week.index === 0 ? "0-7d" : `${week.index * 7}-${week.index * 7 + 7}d`;
       return `
         <div class="cadence__col" title="${week.count} in ${label} from ${esc(dateOnly(week.start))}">
           <span class="cadence__count">${week.count}</span>

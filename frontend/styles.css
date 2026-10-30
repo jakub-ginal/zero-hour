@@ -288,14 +288,17 @@ main,
   position: sticky;
   top: 0;
   z-index: 30;
-  background: linear-gradient(180deg, var(--nav-a), var(--nav-b));
-  border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(14px);
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  backdrop-filter: none;
   transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 .nav.is-scrolled {
-  background: var(--nav-scrolled);
+  background:
+    linear-gradient(180deg, rgba(var(--accent-rgb), 0.065), transparent 78%),
+    var(--nav-scrolled);
   border-bottom-color: var(--nav-border);
+  backdrop-filter: blur(14px);
   box-shadow: 0 12px 30px -24px #000;
 }
 .nav__inner {
@@ -385,25 +388,44 @@ main,
 }
 .tz {
   display: inline-flex;
-  padding: 3px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--surface);
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 .tz button {
-  padding: 5px 12px;
+  position: relative;
+  padding: 6px 4px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-3);
   font: inherit;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
+  transition: color 0.2s ease;
+}
+.tz button:hover {
+  color: var(--text-2);
 }
 .tz button[aria-pressed="true"] {
-  background: var(--text);
-  color: var(--bg);
+  background: transparent;
+  color: var(--accent);
+  box-shadow: none;
+  font-weight: 600;
+}
+.tz button[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 1px;
+  height: 1px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.75;
 }
 .theme {
   position: relative;
@@ -976,6 +998,7 @@ main {
 .card__media {
   position: relative;
   aspect-ratio: 16 / 9;
+  overflow: hidden;
   background: linear-gradient(135deg, rgb(var(--panel-raised-rgb)), rgb(var(--panel-deep-rgb)));
 }
 .card__media--empty {
@@ -1001,7 +1024,9 @@ main {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 46%, rgba(5, 6, 11, 0.58) 100%);
+  background:
+    linear-gradient(180deg, rgba(var(--accent-rgb), 0.09), rgba(var(--accent-rgb), 0.09)),
+    linear-gradient(180deg, transparent 60%, rgba(5, 6, 11, 0.32) 100%);
   pointer-events: none;
 }
 .card__media img {
@@ -1009,10 +1034,12 @@ main {
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.5s ease;
+  filter: saturate(0.82) contrast(1.02);
+  transition: transform 0.5s ease, filter 0.35s ease;
 }
 .card:hover .card__media img {
-  transform: scale(1.05);
+  transform: scale(1.035);
+  filter: saturate(0.9) contrast(1.02);
 }
 
 .pill {
@@ -2432,6 +2459,9 @@ main {
   .hero__title .word > span {
     animation: none;
     transform: none;
+  }
+  .card__media img {
+    transition: none;
   }
   * {
     scroll-behavior: auto !important;
