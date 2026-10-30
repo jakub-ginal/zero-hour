@@ -693,7 +693,7 @@ function card(launch) {
   return `
     <article class="card" data-id="${esc(launch.id)}">
       <div class="card__media${image ? "" : " card__media--empty"}">
-        ${image ? `<img src="${esc(image)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}
+        ${image ? `<img src="${esc(image)}" alt="" loading="lazy" decoding="async">` : ""}
         <div class="card__badges">
           ${statusPill(launch)}
           ${orbit ? `<span class="pill pill--orbit" title="${esc((launch.mission && launch.mission.orbit) || "")}">${esc(orbit)}</span>` : ""}
@@ -1056,6 +1056,14 @@ function setTz(value) {
 
 function wire() {
   let searchTimer;
+
+  document.addEventListener(
+    "error",
+    (event) => {
+      if (event.target instanceof HTMLImageElement) event.target.remove();
+    },
+    true,
+  );
 
   document.addEventListener("keydown", (event) => {
     if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;

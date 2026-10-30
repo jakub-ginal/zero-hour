@@ -6,16 +6,7 @@
   <title>Mission control - Zero Hour</title>
   <meta name="description" content="Track launch cadence, providers, status, watchlists, and the month ahead.">
   <meta name="theme-color" content="#05060b">
-  <script>
-    (function () {
-      try {
-        var theme = localStorage.getItem("zh-theme");
-        document.documentElement.dataset.theme = ["ice", "graphite", "aurora", "sand"].includes(theme) ? theme : "ice";
-      } catch (error) {
-        document.documentElement.dataset.theme = "ice";
-      }
-    })();
-  </script>
+  <script src="theme-boot.js"></script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="manifest" href="site.webmanifest">
