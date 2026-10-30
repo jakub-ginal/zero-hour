@@ -344,6 +344,13 @@ async def get_launch(launch_id: str, request: Request) -> Launch:
     return launch
 
 
+class RevalidatingStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers.setdefault("Cache-Control", "no-cache")
+        return response
+
+
 frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
 if settings.serve_frontend and (frontend_dir / "index.html").exists():
-    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+    app.mount("/", RevalidatingStaticFiles(directory=frontend_dir, html=True), name="frontend")
