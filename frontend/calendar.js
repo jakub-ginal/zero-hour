@@ -1,4 +1,5 @@
 import { initFinder } from "./finder.js";
+import { wireNavScroll } from "./shared.js";
 
 const providerSelect = document.querySelector("#feed-provider");
 const statusSelect = document.querySelector("#feed-status");
@@ -191,6 +192,7 @@ import("./starfield.js")
     /* decorative only */
   });
 
+wireNavScroll();
 initFinder();
 
 if ("serviceWorker" in navigator) {

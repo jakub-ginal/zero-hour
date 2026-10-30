@@ -6,6 +6,7 @@ import {
   launchDayKicker,
   launchDayRefreshDue,
   launchDayState,
+  wireNavScroll,
 } from "./shared.js";
 import { startStarfield } from "./starfield.js";
 
@@ -1204,12 +1205,7 @@ function wire() {
   });
   window.addEventListener("hashchange", openFromHash);
 
-  const nav = document.querySelector(".nav");
-  if (nav) {
-    const onScroll = () => nav.classList.toggle("is-scrolled", window.scrollY > 20);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-  }
+  wireNavScroll();
 }
 
 async function loadLaunches() {

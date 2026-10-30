@@ -19,6 +19,7 @@ import {
   statusPill,
   timeOnly,
   watchlistExport,
+  wireNavScroll,
   wireTzButtons,
   writeSaved,
 } from "./shared.js";
@@ -595,6 +596,7 @@ function wireControls() {
   });
 }
 
+wireNavScroll();
 wireTzButtons();
 wireControls();
 initFinder();

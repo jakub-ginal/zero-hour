@@ -21,6 +21,7 @@ import {
   tzLabel,
   whenText,
   windowText,
+  wireNavScroll,
   wireTzButtons,
 } from "./shared.js";
 
@@ -482,6 +483,7 @@ window.addEventListener("keydown", (event) => {
   location.href = link.href;
 });
 
+wireNavScroll();
 wireTzButtons();
 initFinder();
 loadLaunch();

@@ -290,6 +290,14 @@ export function registerServiceWorker() {
   });
 }
 
+export function wireNavScroll() {
+  const nav = document.querySelector(".nav");
+  if (!nav) return;
+  const onScroll = () => nav.classList.toggle("is-scrolled", window.scrollY > 20);
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+}
+
 export function wireTzButtons(root = document) {
   const buttons = [...root.querySelectorAll("[data-tz]")];
   const paint = () => {
