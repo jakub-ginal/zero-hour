@@ -225,6 +225,36 @@ def test_health_is_not_cached(api: TestClient) -> None:
     assert api.get("/api/health").headers["cache-control"] == "no-store"
 
 
+def test_security_headers(api: TestClient) -> None:
+    resp = api.get("/api/health")
+    assert resp.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
+    assert resp.headers["x-content-type-options"] == "nosniff"
+    assert resp.headers["x-frame-options"] == "DENY"
+    assert resp.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert resp.headers["cross-origin-opener-policy"] == "same-origin"
+    csp = resp.headers["content-security-policy"]
+    assert "default-src 'self'" in csp
+    assert "script-src 'self';" in csp
+    assert "object-src 'none'" in csp
+    assert "base-uri 'self'" in csp
+    assert "form-action 'self'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "https://fonts.googleapis.com" in csp
+    assert "https://fonts.gstatic.com" in csp
+    assert "https://www.openstreetmap.org" in csp
+    assert "'unsafe-eval'" not in csp
+
+
+def test_docs_have_scoped_csp(api: TestClient) -> None:
+    csp = api.get("/docs").headers["content-security-policy"]
+    assert "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;" in csp
+    assert "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net" in csp
+    assert "https://fonts.googleapis.com" in csp
+    assert "https://fonts.gstatic.com" in csp
+    assert "worker-src 'self' blob:" in csp
+    assert "https://www.openstreetmap.org" not in csp
+
+
 def test_calendar_feed_filters_by_provider_and_status(api: TestClient) -> None:
     spacex = api.get("/api/calendar.ics?provider=spacex&status=Go").text
     assert "Launch: Starlink Group 15-15" in spacex
